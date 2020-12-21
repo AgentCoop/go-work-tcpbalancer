@@ -8,15 +8,7 @@ import (
 	"github.com/jessevdk/go-flags"
 	"os"
 	"strconv"
-	"strings"
 )
-
-func echoService(in []byte, c n.InboundConn) {
-	msg := string(in)
-	fmt.Printf("%s says %s\n", c.GetConn().RemoteAddr(), msg)
-	upperCase := strings.ToUpper(msg)
-	c.GetWriteChan() <- []byte(upperCase)
-}
 
 func main() {
 	parser := flags.NewParser(&backend.CliOptions, flags.PassDoubleDash | flags.PrintErrors)
@@ -35,7 +27,7 @@ func main() {
 	mainJob.AddTask(n.ListenTask)
 
 	if backend.CliOptions.Echo {
-		connManager.SetDataHandler(echoService)
+		mainJob.AddTask(backend.EchoService)
 	}
 
 	<-mainJob.Run()

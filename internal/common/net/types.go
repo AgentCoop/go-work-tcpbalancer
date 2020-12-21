@@ -2,6 +2,7 @@ package net
 
 import (
 	n "net"
+	"sync"
 )
 
 type IncomingDataHandler func(data []byte, c InboundConn)
@@ -22,6 +23,7 @@ type InboundConn interface {
 type inboundConn struct {
 	conn n.Conn
 	writeChan chan []byte
+	readChan chan []byte
 	connManager *connManager
 }
 
@@ -31,6 +33,7 @@ type connManager struct {
 	bytesSent			uint64
 	bytesReceived		uint64
 	inHandler IncomingDataHandler
+	inboundConnMu		sync.RWMutex
 	inboundConns		InboundConnections
 	plis n.Listener
 	network string

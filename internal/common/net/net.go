@@ -4,11 +4,11 @@ import (
 	job "github.com/AgentCoop/go-work"
 	"net"
 	"sync/atomic"
-	"time"
 )
 
 func NewConnManager(network string, addr string) *connManager {
 	m := &connManager{network: network, addr: addr}
+	m.inboundConns = make(InboundConnections)
 	return m
 }
 
@@ -17,7 +17,17 @@ func (m *connManager) SetDataHandler(h IncomingDataHandler) {
 }
 
 func (m *connManager) GetInboundConns() InboundConnections {
+	m.inboundConnMu.RLock()
+	defer m.inboundConnMu.RUnlock()
 	return m.inboundConns
+}
+
+func (m *connManager) GetBytesSent() uint64 {
+	return m.bytesSent
+}
+
+func (m *connManager) GetBytesReceived() uint64 {
+	return m.bytesReceived
 }
 
 func (c *inboundConn) String() string {
@@ -30,6 +40,10 @@ func (c *inboundConn) Key() string {
 
 func (c *inboundConn) GetConn() net.Conn {
 	return c.conn
+}
+
+func (c *inboundConn) GetReadChan() chan []byte {
+	return c.readChan
 }
 
 func (c *inboundConn) GetWriteChan() chan<- []byte {
@@ -50,16 +64,20 @@ func ListenTask(j job.Job) (func(), func() interface{}, func()) {
 		j.Assert(acceptErr)
 		atomic.AddInt32(&cm.inboundCounter, 1)
 
-		pconn.SetDeadline(time.Now().Add(6 * time.Second))
+		//pconn.SetDeadline(time.Now().Add(6 * time.Second))
 
 		go func() {
-			ac := &inboundConn{conn: pconn}
-			ac.writeChan = make(chan []byte)
-			ac.connManager = cm
-			acJob := job.NewJob(ac)
-			acJob.AddTask(inboundConnWriteTask)
-			acJob.AddTask(inboundConnReadTask)
-			<-acJob.Run()
+			in := &inboundConn{conn: pconn}
+			in.writeChan = make(chan []byte, 1)
+			in.readChan = make(chan []byte, 1)
+			in.connManager = cm
+			in.connManager.inboundConnMu.Lock()
+			in.connManager.inboundConns[in.Key()] = in
+			in.connManager.inboundConnMu.Unlock()
+			inJob := job.NewJob(in)
+			inJob.AddTask(inboundConnWriteTask)
+			inJob.AddTask(inboundConnReadTask)
+			<-inJob.Run()
 		}()
 		return nil
 	}
@@ -96,15 +114,16 @@ func inboundConnReadTask(j job.Job) (func(), func() interface{}, func()) {
 		n, err := in.conn.Read(buf)
 		atomic.AddUint64(&in.connManager.bytesReceived, uint64(n))
 		j.Assert(err)
-		if in.connManager.inHandler != nil {
-			in.connManager.inHandler(buf[0:n], in)
-		}
+		in.readChan <- buf[0:n]
 		return nil
 	}
 	cancel := func() {
 		in := j.GetValue().(*inboundConn)
 		cm := in.connManager
 		atomic.AddInt32(&cm.inboundCounter, -1)
+		in.connManager.inboundConnMu.Lock()
+		delete(in.connManager.inboundConns, in.Key())
+		in.connManager.inboundConnMu.Unlock()
 		in.conn.Close()
 	}
 	return init, run, cancel
