@@ -8,4 +8,15 @@ services:
     volumes:
       - .:/src
     ports:
-      - "9090-9095:9090-9095"
+      - 9090:9090
+
+  backend-1:
+    build:
+      context: .
+      dockerfile: ./cmd/backend/Dockerfile
+    environment:
+      - SERVNAME=backend-1
+    volumes:
+      - .:/src
+    ports:
+      - 9091:9090

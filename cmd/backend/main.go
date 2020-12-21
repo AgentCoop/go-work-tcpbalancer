@@ -20,7 +20,7 @@ func main() {
 		os.Exit(-1)
 	}
 
-	localAddr := ":" + strconv.Itoa(port)
+	localAddr := "127.0.0.1:" + strconv.Itoa(port)
 	connManager := n.NewConnManager("tcp4", localAddr)
 
 	mainJob := j.NewJob(connManager)
@@ -29,6 +29,6 @@ func main() {
 	if backend.CliOptions.Echo {
 		mainJob.AddTask(backend.EchoService)
 	}
-
+	fmt.Printf("💻 server [ %s ] started on port %d\n", backend.CliOptions.Name, port)
 	<-mainJob.Run()
 }
