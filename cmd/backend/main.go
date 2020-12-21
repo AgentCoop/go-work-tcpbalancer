@@ -21,7 +21,7 @@ func main() {
 		os.Exit(-1)
 	}
 
-	localAddr := "127.0.0.1:" + strconv.Itoa(port)
+	localAddr := backend.CliOptions.Name + ":" + strconv.Itoa(port)
 	connManager := n.NewConnManager("tcp4", localAddr)
 
 	mainJob := j.NewJob(connManager)

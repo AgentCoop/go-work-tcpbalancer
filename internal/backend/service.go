@@ -26,6 +26,9 @@ func EchoService(j job.Job) (func(), func() interface{}, func()) {
 }
 
 func StressTestTask(j job.Job) (func(), func() interface{}, func()) {
+	init := func() {
+		rand.Seed(rand.Int63())
+	}
 	run := func() interface{} {
 		cm := j.GetValue().(net.ConnManager)
 		for _, v := range cm.GetInboundConns() {
@@ -49,5 +52,5 @@ func StressTestTask(j job.Job) (func(), func() interface{}, func()) {
 		}
 		return nil
 	}
-	return nil, run, nil
+	return init, run, nil
 }

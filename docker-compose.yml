@@ -18,5 +18,21 @@ services:
       - SERVNAME=backend-1
     volumes:
       - .:/src
-    ports:
-      - 9091:9090
+
+  backend-2:
+    build:
+      context: .
+      dockerfile: ./cmd/backend/Dockerfile
+    environment:
+      - SERVNAME=backend-2
+    volumes:
+      - .:/src
+
+  backend-3:
+    build:
+      context: .
+      dockerfile: ./cmd/backend/Dockerfile
+    environment:
+      - SERVNAME=backend-3
+    volumes:
+      - .:/src
