@@ -11,6 +11,7 @@ import (
 )
 
 func main() {
+	backend.DefaultCliOptions()
 	parser := flags.NewParser(&backend.CliOptions, flags.PassDoubleDash | flags.PrintErrors)
 	parser.ParseArgs(os.Args)
 	port := backend.CliOptions.Port
@@ -29,6 +30,11 @@ func main() {
 	if backend.CliOptions.Echo {
 		mainJob.AddTask(backend.EchoService)
 	}
+
+	if backend.CliOptions.StressTest {
+		mainJob.AddTask(backend.StressTestTask)
+	}
+
 	fmt.Printf("💻 server [ %s ] started on port %d\n", backend.CliOptions.Name, port)
 	<-mainJob.Run()
 }
