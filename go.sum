@@ -1,0 +1,4 @@
+github.com/AgentCoop/go-work v0.0.0-20201220172543-fc20e69f62e0 h1:SWXLlKUKpre/Fo8Pi6FolFiY8OSVrl55AKiZ6h1XK9o=
+github.com/AgentCoop/go-work v0.0.0-20201220172543-fc20e69f62e0/go.mod h1:isypi+prFXy84/Uo5B6CqtLJ0LBkAr1/85aPjPC+J7U=
+github.com/jessevdk/go-flags v1.4.0 h1:4IU2WS7AumrZ/40jfhf4QVDMsQwqA7VEHozFRrGARJA=
+github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=

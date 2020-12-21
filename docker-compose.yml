@@ -1,0 +1,11 @@
+version: "3.9"
+
+services:
+  balancer:
+    build:
+      context: .
+      dockerfile: ./cmd/balancer/Dockerfile
+    volumes:
+      - .:/src
+    ports:
+      - "9090-9095:9090-9095"
