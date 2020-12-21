@@ -35,6 +35,6 @@ func main() {
 		mainJob.AddTask(backend.StressTestTask)
 	}
 
-	fmt.Printf("💻 server [ %s ] started on port %d\n", backend.CliOptions.Name, port)
+	fmt.Printf("💻 server [ %s ] is listening on port %d\n", backend.CliOptions.Name, port)
 	<-mainJob.Run()
 }
