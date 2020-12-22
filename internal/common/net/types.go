@@ -52,10 +52,10 @@ type activeConn struct {
 	connManager *connManager
 	netJob	job.Job
 	state ConnState
+	typ ConnType
 }
 
 type connManager struct {
-	typ             ConnType
 	inboundCounter  int32
 	outboundCounter int32
 	bytesSent       uint64

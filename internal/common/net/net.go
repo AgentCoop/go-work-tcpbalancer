@@ -49,10 +49,37 @@ func (m *connManager) GetBytesReceived() uint64 {
 	return m.bytesReceived
 }
 
-func (m *connManager) addOutboundConn(c *activeConn) {
-	m.outboundConnMu.Lock()
-	defer m.outboundConnMu.Unlock()
-	m.outboundConns[c.Key()] = c
+func (m *connManager) addConn(c *activeConn) {
+	var l *sync.RWMutex
+	var connMap ActiveConnectionsMap
+	switch c.typ {
+	case Inbound:
+		l = &m.inboundConnMu
+		connMap = m.inboundConns
+	case Outbound:
+		l = &m.outboundConnMu
+		connMap = m.outboundConns
+	}
+	l.Lock()
+	defer l.Unlock()
+	connMap[c.Key()] = c
+}
+
+func (m *connManager) delConn(c *activeConn) {
+	var l *sync.RWMutex
+	var connMap ActiveConnectionsMap
+	switch c.typ {
+	case Inbound:
+		l = &m.inboundConnMu
+		connMap = m.inboundConns
+	case Outbound:
+		l = &m.outboundConnMu
+		connMap = m.outboundConns
+	}
+	l.Lock()
+	defer l.Unlock()
+	delete(connMap, c.Key())
+	c.conn.Close()
 }
 
 func (c *activeConn) String() string {
@@ -101,7 +128,7 @@ func (c *connManager) Connect(j job.Job) <-chan struct{} {
 			j.CancelWithError(err)
 			return
 		}
-		ac := &activeConn{conn: conn, state: Active}
+		ac := &activeConn{conn: conn, typ: Outbound, state: Active}
 		ac.writeChan = make(chan []byte, 1)
 		ac.readChan = make(chan []byte, 1)
 		ac.connManager = c
@@ -109,7 +136,7 @@ func (c *connManager) Connect(j job.Job) <-chan struct{} {
 		newJob.AddTask(connReadTask)
 		newJob.AddTask(connWriteTask)
 		ac.netJob = j
-		c.addOutboundConn(ac)
+		c.addConn(ac)
 		newJob.Run()
 		ch <- struct{}{}
 	}()
@@ -131,14 +158,12 @@ func ListenTask(j job.Job) (func(), func() interface{}, func()) {
 		atomic.AddInt32(&cm.inboundCounter, 1)
 		//pconn.SetDeadline(time.Now().Add(6 * time.Second))
 		go func() {
-			in := &activeConn{conn: pconn, state: Active}
-			in.writeChan = make(chan []byte, 1)
-			in.readChan = make(chan []byte, 1)
-			in.connManager = cm
-			in.connManager.inboundConnMu.Lock()
-			in.connManager.inboundConns[in.Key()] = in
-			in.connManager.inboundConnMu.Unlock()
-			inJob := job.NewJob(in)
+			ac := &activeConn{conn: pconn, typ: Inbound, state: Active}
+			ac.writeChan = make(chan []byte, 1)
+			ac.readChan = make(chan []byte, 1)
+			ac.connManager = cm
+			cm.addConn(ac)
+			inJob := job.NewJob(ac)
 			inJob.AddTask(inboundConnWriteTask)
 			inJob.AddTask(inboundConnReadTask)
 			<-inJob.Run()
@@ -228,14 +253,10 @@ func connReadTask(j job.Job) (func(), func() interface{}, func()) {
 		ac := j.GetValue().(*activeConn)
 		cm := ac.connManager
 		atomic.AddInt32(&cm.outboundCounter, -1)
-		cm.outboundConnMu.Lock()
-		delete(cm.outboundConns, ac.Key())
-		cm.outboundConnMu.Unlock()
 		if ac.netJob != nil {
 			ac.netJob.Cancel()
 		}
-		ac.state = Closed
-		ac.conn.Close()
+		cm.delConn(ac)
 	}
 	return init, run, cancel
 }
