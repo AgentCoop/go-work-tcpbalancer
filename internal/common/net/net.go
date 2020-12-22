@@ -1,9 +1,9 @@
 package net
 
 import (
-	"fmt"
 	job "github.com/AgentCoop/go-work"
 	"net"
+	"sync"
 	"sync/atomic"
 )
 
@@ -18,16 +18,27 @@ func (m *connManager) SetDataHandler(h IncomingDataHandler) {
 	m.inHandler = h
 }
 
-func (m *connManager) GetInboundConns() ActiveConnectionsMap {
-	m.inboundConnMu.RLock()
-	defer m.inboundConnMu.RUnlock()
-	return m.inboundConns
-}
-
-func (m *connManager) GetOutboundConns() ActiveConnectionsMap {
-	m.outboundConnMu.RLock()
-	defer m.outboundConnMu.RUnlock()
-	return m.outboundConns
+func (m *connManager) IterateOverConns(typ ConnType, f func(c ActiveConn)) int {
+	var conns ActiveConnectionsMap
+	var l *sync.RWMutex
+	switch typ  {
+	case Inbound:
+		l = &m.inboundConnMu
+		conns = m.inboundConns
+	case Outbound:
+		l = &m.outboundConnMu
+		conns = m.outboundConns
+	}
+	l.RLock()
+	defer l.RUnlock()
+	count := 0
+	for _, c := range conns {
+		l.RUnlock()
+		f(c)
+		count++
+		l.RLock()
+	}
+	return count
 }
 
 func (m *connManager) GetBytesSent() uint64 {
@@ -60,35 +71,46 @@ func (c *activeConn) GetNetJob() job.Job {
 	return c.netJob
 }
 
-func (c *activeConn) GetReadChan() chan []byte {
-	return c.readChan
+func (c *activeConn) GetReadChan() <-chan []byte {
+	switch c.state {
+	case Active:
+		return c.readChan
+	case Closed:
+		return nil
+	default:
+		return nil
+	}
 }
 
 func (c *activeConn) GetWriteChan() chan<- []byte {
-	return c.writeChan
+	switch c.state {
+	case Active:
+		return c.writeChan
+	case Closed:
+		return nil
+	default:
+		return nil
+	}
 }
 
-func (c *connManager) Connect(j job.Job) chan struct{} {
+func (c *connManager) Connect(j job.Job) <-chan struct{} {
 	ch := make(chan struct{})
 	go func() {
 		conn, err := net.Dial(c.network, c.addr)
 		if err != nil {
-			fmt.Printf("conn err %s\n", err)
 			j.CancelWithError(err)
 			return
 		}
-		fmt.Println("Connected")
-		ac := &activeConn{conn: conn}
+		ac := &activeConn{conn: conn, state: Active}
 		ac.writeChan = make(chan []byte, 1)
 		ac.readChan = make(chan []byte, 1)
 		ac.connManager = c
 		newJob := job.NewJob(ac)
 		newJob.AddTask(connReadTask)
 		newJob.AddTask(connWriteTask)
-		ac.netJob = newJob
+		ac.netJob = j
 		c.addOutboundConn(ac)
 		newJob.Run()
-		fmt.Println("Run new job")
 		ch <- struct{}{}
 	}()
 	return ch
@@ -109,7 +131,7 @@ func ListenTask(j job.Job) (func(), func() interface{}, func()) {
 		atomic.AddInt32(&cm.inboundCounter, 1)
 		//pconn.SetDeadline(time.Now().Add(6 * time.Second))
 		go func() {
-			in := &activeConn{conn: pconn}
+			in := &activeConn{conn: pconn, state: Active}
 			in.writeChan = make(chan []byte, 1)
 			in.readChan = make(chan []byte, 1)
 			in.connManager = cm
@@ -209,9 +231,11 @@ func connReadTask(j job.Job) (func(), func() interface{}, func()) {
 		cm.outboundConnMu.Lock()
 		delete(cm.outboundConns, ac.Key())
 		cm.outboundConnMu.Unlock()
-		fmt.Printf(" client conn %s closed\n",ac.GetConn().RemoteAddr())
+		if ac.netJob != nil {
+			ac.netJob.Cancel()
+		}
+		ac.state = Closed
 		ac.conn.Close()
-		fmt.Printf("Done\n")
 	}
 	return init, run, cancel
 }

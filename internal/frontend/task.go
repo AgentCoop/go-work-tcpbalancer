@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func ClientTask(j job.Job) (func(), func() interface{}, func()) {
+func ClientReqTask(j job.Job) (func(), func() interface{}, func()) {
 	var buf []byte
 	init := func() {
 		l := rand.Intn(CliOptions.ReqDataMaxLen) + 1
@@ -18,19 +18,33 @@ func ClientTask(j job.Job) (func(), func() interface{}, func()) {
 	}
 	run := func() interface{} {
 		cm := j.GetValue().(net.ConnManager)
-		for _, v := range cm.GetOutboundConns() {
-			fmt.Printf("Iterate over\n")
-			v.GetWriteChan() <- buf
-			start := time.Now()
-			select {
-			case res := <- v.GetReadChan():
-				elapsed := time.Now().Sub(start)
-				fmt.Printf("[%s] -> res. time: %d ms; bytes: %d\n",
-					v.GetConn().RemoteAddr(), elapsed / time.Millisecond, len(res))
-			}
-			v.GetNetJob().Cancel()
-		}
+		cm.IterateOverConns(net.Outbound, func(c net.ActiveConn) {
+			c.GetWriteChan() <- buf
+		})
 		return true
+	}
+	return init, run, nil
+}
+
+
+func ClientRespTask(j job.Job) (func(), func() interface{}, func()) {
+	var reqStartTime time.Time
+	init := func() {
+		reqStartTime = time.Now()
+	}
+	run := func() interface{} {
+		cm := j.GetValue().(net.ConnManager)
+		cm.IterateOverConns(net.Outbound, func(c net.ActiveConn) {
+			select {
+			case res := <- c.GetReadChan():
+				elapsed := time.Now().Sub(reqStartTime)
+				fmt.Printf("[%s] -> res. time: %d ms; bytes: %d\n",
+					c.GetConn().RemoteAddr(), elapsed / time.Millisecond, len(res))
+			default:
+			}
+		})
+		time.Sleep(time.Microsecond)
+		return nil
 	}
 	return init, run, nil
 }

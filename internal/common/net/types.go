@@ -7,14 +7,24 @@ import (
 )
 
 type ConnType int
+type ConnState int
 
 const (
-	Inbound = iota
+	Inbound ConnType = iota
 	Outbound
+)
+
+const (
+	Active ConnState = iota
+	Closed
 )
 
 func (s ConnType) String() string {
 	return [...]string{"Inbound", "Outbound"}[s]
+}
+
+func (s ConnState) String() string {
+	return [...]string{"Active", "Closed"}[s]
 }
 
 type IncomingDataHandler func(data []byte, c ActiveConn)
@@ -22,10 +32,10 @@ type ActiveConnectionsMap map[string]*activeConn
 
 type ConnManager interface {
 	SetDataHandler(h IncomingDataHandler)
-	GetInboundConns() ActiveConnectionsMap
-	GetOutboundConns() ActiveConnectionsMap
+	IterateOverConns(typ ConnType, f func(c ActiveConn)) int
 	GetBytesSent() uint64
 	GetBytesReceived() uint64
+	Connect(j job.Job) <-chan struct{}
 }
 
 type ActiveConn interface {
@@ -41,6 +51,7 @@ type activeConn struct {
 	readChan chan []byte
 	connManager *connManager
 	netJob	job.Job
+	state ConnState
 }
 
 type connManager struct {

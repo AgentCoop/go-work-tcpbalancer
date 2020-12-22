@@ -12,14 +12,14 @@ import (
 func EchoService(j job.Job) (func(), func() interface{}, func()) {
 	run := func() interface{} {
 		cm := j.GetValue().(net.ConnManager)
-		for key, v := range cm.GetInboundConns() {
+		cm.IterateOverConns(net.Inbound, func(c net.ActiveConn) {
 			select {
-			case data := <-v.GetReadChan():
-				v.GetWriteChan() <- []byte(fmt.Sprintf("%s [%s] -> pong:  %s\n",
-					key, CliOptions.Name, strings.ToUpper(string(data))))
+			case data := <-c.GetReadChan():
+				c.GetWriteChan() <- []byte(fmt.Sprintf("%s [%s] -> pong:  %s\n",
+					c.GetConn().RemoteAddr(), CliOptions.Name, strings.ToUpper(string(data))))
 			default:
 			}
-		}
+		})
 		return nil
 	}
 	return nil, run, nil
@@ -31,10 +31,9 @@ func StressTestTask(j job.Job) (func(), func() interface{}, func()) {
 	}
 	run := func() interface{} {
 		cm := j.GetValue().(net.ConnManager)
-		for _, v := range cm.GetInboundConns() {
+		cm.IterateOverConns(net.Inbound, func(c net.ActiveConn) {
 			select {
-			case <-v.GetReadChan():
-				currIn := v
+			case <-c.GetReadChan():
 				go func() {
 					min, max := CliOptions.RespMinTime, CliOptions.RespMaxTime
 					t := time.Duration(rand.Intn(max - min) + min) * time.Millisecond
@@ -44,12 +43,15 @@ func StressTestTask(j job.Job) (func(), func() interface{}, func()) {
 					rand.Read(randData)
 					fmt.Printf("[%s] -> resp. time: %d ms; bytes: %d\n",
 						CliOptions.Name,  t / time.Millisecond, resDataLen)
-					currIn.GetWriteChan() <- randData
-					currIn.GetConn().Close()
+					c.GetWriteChan() <- randData
+					//fmt.Printf("done\n")
+					time.Sleep(1 * time.Millisecond)
+					c.GetConn().Close()
 				}()
 			default:
 			}
-		}
+		})
+		time.Sleep(time.Second)
 		return nil
 	}
 	return init, run, nil

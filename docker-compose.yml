@@ -11,8 +11,8 @@ services:
       - 9090:9090
     depends_on:
       - backend-1
-      - backend-2
-      - backend-3
+#      - backend-2
+#      - backend-3
 
   backend-1:
     build:
@@ -23,29 +23,29 @@ services:
     volumes:
       - .:/src
 
-  backend-2:
-    build:
-      context: .
-      dockerfile: ./cmd/backend/Dockerfile
-    environment:
-      - SERVNAME=backend-2
-    volumes:
-      - .:/src
+#  backend-2:
+#    build:
+#      context: .
+#      dockerfile: ./cmd/backend/Dockerfile
+#    environment:
+#      - SERVNAME=backend-2
+#    volumes:
+#      - .:/src
+#
+#  backend-3:
+#    build:
+#      context: .
+#      dockerfile: ./cmd/backend/Dockerfile
+#    environment:
+#      - SERVNAME=backend-3
+#    volumes:
+#      - .:/src
 
-  backend-3:
-    build:
-      context: .
-      dockerfile: ./cmd/backend/Dockerfile
-    environment:
-      - SERVNAME=backend-3
-    volumes:
-      - .:/src
-
-  client-1:
-    build:
-      context: .
-      dockerfile: ./cmd/frontend/Dockerfile
-    volumes:
-      - .:/src
-    depends_on:
-      - proxy-server
+#  client-1:
+#    build:
+#      context: .
+#      dockerfile: ./cmd/frontend/Dockerfile
+#    volumes:
+#      - .:/src
+#    depends_on:
+#      - proxy-server
