@@ -27,14 +27,20 @@ func main() {
 	mainJob := j.NewJob(connManager)
 	mainJob.AddTask(n.ListenTask)
 
+	go func() {
+		for {
+			select {
+			case err := <-mainJob.GetError():
+				fmt.Printf("err: %s\n", err)
+			}
+		}
+	}()
+
 	if backend.CliOptions.Echo {
 		mainJob.AddTask(backend.EchoService)
-	}
-
-	if backend.CliOptions.StressTest {
+	} else {
 		mainJob.AddTask(backend.StressTestTask)
 	}
-
 	fmt.Printf("💻 server [ %s ] is listening on port %d\n", backend.CliOptions.Name, port)
 	<-mainJob.Run()
 }

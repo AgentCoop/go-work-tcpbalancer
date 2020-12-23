@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/gob"
 	"fmt"
 	j "github.com/AgentCoop/go-work"
 	n "github.com/AgentCoop/go-work-tcpbalancer/internal/common/net"
@@ -13,8 +14,7 @@ import (
 func connToProxy(connManager n.ConnManager) {
 	mainJob := j.NewJob(connManager)
 	mainJob.WithPrerequisites(connManager.Connect(mainJob))
-	mainJob.AddTask(frontend.ClientReqTask)
-	mainJob.AddTask(frontend.ClientRespTask)
+	mainJob.AddTask(frontend.SquareNumsInBatchTask)
 	<-mainJob.Run()
 	//go func(){
 	//	select {
@@ -30,11 +30,13 @@ func main() {
 	parser := flags.NewParser(&frontend.CliOptions, flags.PassDoubleDash | flags.PrintErrors)
 	parser.ParseArgs(os.Args)
 
+	fmt.Printf("Host: %s\n", frontend.CliOptions.ProxyHost)
 	if len(frontend.CliOptions.ProxyHost) == 0 {
 		fmt.Printf("Specify a proxy server to connect to\n")
 		os.Exit(-1)
 	}
 
+	gob.Register(&frontend.CruncherPayload{})
 	connManager := n.NewConnManager("tcp4", frontend.CliOptions.ProxyHost)
 	for {
 		//connToProxy(connManager)
