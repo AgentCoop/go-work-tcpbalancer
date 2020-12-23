@@ -7,13 +7,13 @@ import (
 	n "net"
 )
 
-func NewDataFrame() *DataFrame {
-	f := &DataFrame{}
+func NewDataFrame() *dataFrame {
+	f := &dataFrame{}
 	f.tail = nil
 	return f
 }
 
-func (f *DataFrame) Encode(data interface{}) ([]byte, error) {
+func (f *dataFrame) Encode(data interface{}) ([]byte, error) {
 	var frame bytes.Buffer
 	// Encode frame data
 	enc := gob.NewEncoder(&frame)
@@ -35,7 +35,7 @@ func (f *DataFrame) Encode(data interface{}) ([]byte, error) {
 	return buf, nil
 }
 
-func (f *DataFrame) Decode(conn n.Conn) ([]byte, error, []byte) {
+func (f *dataFrame) Decode(conn n.Conn) ([]byte, error, []byte) {
 	var framebuf []byte
 	if f.readbuf == nil {
 		f.readbuf = make([]byte, StreamReadBufferSize)
@@ -83,7 +83,7 @@ func (f *DataFrame) Decode(conn n.Conn) ([]byte, error, []byte) {
 	}
 }
 
-func (f *DataFrame) probe() bool {
+func (f *dataFrame) probe() bool {
 	if len(f.readbuf) < len(dataFrameMagicWord) {
 		return false
 	}

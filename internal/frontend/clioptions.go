@@ -3,12 +3,15 @@ package frontend
 var CliOptions struct {
 	ProxyHost string `short:"h" required:"true" description:""`
 	MaxConns int `long:"maxconns" description:""`
-	MinNums int `long:"nmin" description:""`
-	MaxNums int `long:"nmax" description:""`
+	MinBatchesPerConn int `long:"batch-min" description:""`
+	MaxBatchesPerConn int `long:"batch-max" description:""`
+	MinItemsPerBatch int `long:"batch-min-items" description:""`
+	MaxItemsPerBatch int `long:"match-max-items" description:""`
 }
 
 func DefaultCliOptions() {
-	CliOptions.MinNums = 1
-	CliOptions.MaxNums = 10
-	CliOptions.MaxConns = 1
+	CliOptions.MinBatchesPerConn = 1
+	CliOptions.MaxBatchesPerConn = 1
+	CliOptions.MinItemsPerBatch = 1
+	CliOptions.MaxItemsPerBatch = 10
 }

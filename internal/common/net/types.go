@@ -20,6 +20,13 @@ const (
 	Closed
 )
 
+const (
+	DataFrameEvent EventType = iota
+	RawStreamEvent
+	NewOutboundConnEvent
+	InboundConnEstablished
+)
+
 func (s ConnType) String() string {
 	return [...]string{"Inbound", "Outbound"}[s]
 }
@@ -40,20 +47,13 @@ type ConnManager interface {
 	NewOutboundEvent() chan *Event
 }
 
-//type ActiveConn interface {
-//	GetWriteChan() chan<- interface{}
-//	GetReadChan() <-chan []byte
-//	GetConn() n.conn
-//	GetNetJob() job.Job
-//}
-
 const (
 	StreamReadBufferSize = 4096
 )
 
 var dataFrameMagicWord = [...]byte{ 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88 }
 
-type DataFrame struct {
+type dataFrame struct {
 	len uint64
 	Data interface{}
 	readbuf []byte
@@ -78,6 +78,20 @@ type ActiveConn struct {
 type Event struct {
 	conn      *ActiveConn
 	data      []byte
+	value interface{}
+	valueMu sync.RWMutex
+}
+
+func(e *Event) SetValue(value interface{}) {
+	//e.valueMu.Lock()
+	//defer e.valueMu.Unlock()
+	e.value = value
+}
+
+func(e *Event) GetValue() interface{} {
+	//e.valueMu.RLock()
+	//defer e.valueMu.RUnlock()
+	return e.value
 }
 
 func(e *Event) GetData() []byte {
