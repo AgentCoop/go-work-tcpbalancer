@@ -35,7 +35,6 @@ func SquareNumsInBatchTask(j job.Job) (func(), func() interface{}, func()) {
 			}
 			c := evt.GetActiveConn()
 			payload := &CruncherPayload{Items: items, ItemsCount: count}
-			c.DataFrame = payload
 			fmt.Printf(" <- req items %d\n", count)
 			c.GetWriteChan() <- payload
 		case evt := <- cm.DataFrameEvent():

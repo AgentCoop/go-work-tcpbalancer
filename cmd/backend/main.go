@@ -36,11 +36,8 @@ func main() {
 		}
 	}()
 
-	if backend.CliOptions.Echo {
-		mainJob.AddTask(backend.EchoService)
-	} else {
-		mainJob.AddTask(backend.StressTestTask)
-	}
+	mainJob.AddTask(backend.CruncherTask)
+
 	fmt.Printf("💻 server [ %s ] is listening on port %d\n", backend.CliOptions.Name, port)
 	<-mainJob.Run()
 }

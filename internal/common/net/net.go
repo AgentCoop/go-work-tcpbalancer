@@ -10,39 +10,10 @@ func NewConnManager(network string, addr string) *connManager {
 	m := &connManager{network: network, addr: addr}
 	m.inboundConns = make(ActiveConnectionsMap)
 	m.outboundConns = make(ActiveConnectionsMap)
-	m.eventChan = make(chan *Event)
 	m.newInbound = make(chan *Event)
 	m.newOutbound = make(chan *Event)
 	m.dataFrame = make(chan *Event)
 	return m
-}
-
-//func (m *connManager) SetDataHandler(h IncomingDataHandler) {
-//	m.inHandler = h
-//}
-
-func (m *connManager) IterateOverConns(typ ConnType, f func(c *ActiveConn)) int {
-	var conns ActiveConnectionsMap
-	var l *sync.RWMutex
-	switch typ  {
-	case Inbound:
-		l = &m.inboundConnMu
-		conns = m.inboundConns
-	case Outbound:
-		l = &m.outboundConnMu
-		conns = m.outboundConns
-	}
-	l.RLock()
-	l.RUnlock()
-	//defer l.RUnlock()
-	count := 0
-	for _, c := range conns {
-		//l.RUnlock()
-		f(c)
-		count++
-		//l.RLock()
-	}
-	return count
 }
 
 func (m *connManager) GetBytesSent() uint64 {
@@ -51,10 +22,6 @@ func (m *connManager) GetBytesSent() uint64 {
 
 func (m *connManager) GetBytesReceived() uint64 {
 	return m.bytesReceived
-}
-
-func (m *connManager) GetEventChan() chan *Event {
-	return m.eventChan
 }
 
 func (m *connManager) NewInboundEvent() chan *Event {

@@ -20,13 +20,6 @@ const (
 	Closed
 )
 
-const (
-	InDataFrame EventType = iota
-	InRawStream
-	OutbandConnEstablished
-	InboundConnEstablished
-)
-
 func (s ConnType) String() string {
 	return [...]string{"Inbound", "Outbound"}[s]
 }
@@ -35,13 +28,9 @@ func (s ConnState) String() string {
 	return [...]string{"Active", "Closed"}[s]
 }
 
-//type IncomingDataHandler func(data []byte, c ActiveConn)
 type ActiveConnectionsMap map[string]*ActiveConn
 
 type ConnManager interface {
-	//SetDataHandler(h IncomingDataHandler)
-	IterateOverConns(typ ConnType, f func(c *ActiveConn)) int
-	GetEventChan() chan *Event
 	GetBytesSent() uint64
 	GetBytesReceived() uint64
 	Connect(j job.Job) <-chan struct{}
@@ -84,18 +73,11 @@ type ActiveConn struct {
 	netJob	job.Job
 	state ConnState
 	typ ConnType
-	Request *Request
-	DataFrame interface{}
 }
 
 type Event struct {
 	conn      *ActiveConn
 	data      []byte
-	eventType EventType
-}
-
-func(e *Event) GetEventType() EventType {
-	return e.eventType
 }
 
 func(e *Event) GetData() []byte {
@@ -111,13 +93,12 @@ type connManager struct {
 	outboundCounter int32
 	bytesSent       uint64
 	bytesReceived   uint64
-	//inHandler       IncomingDataHandler
+
 	inboundConnMu   sync.RWMutex
 	inboundConns    ActiveConnectionsMap
 	outboundConnMu  sync.RWMutex
 	outboundConns   ActiveConnectionsMap
 
-	eventChan   chan *Event
 	newInbound  chan *Event
 	newOutbound chan *Event
 	dataFrame   chan *Event

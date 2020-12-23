@@ -3,7 +3,6 @@ package backend
 import (
 	"bytes"
 	"encoding/gob"
-	"fmt"
 	job "github.com/AgentCoop/go-work"
 	"github.com/AgentCoop/go-work-tcpbalancer/internal/common/net"
 	"github.com/AgentCoop/go-work-tcpbalancer/internal/frontend"
@@ -22,7 +21,7 @@ func crunchNumbers(payload *frontend.CruncherPayload, evt *net.Event) {
 	c.GetWriteChan() <- result
 }
 
-func StressTestTask(j job.Job) (func(), func() interface{}, func()) {
+func CruncherTask(j job.Job) (func(), func() interface{}, func()) {
 	init := func() {
 
 	}
@@ -35,9 +34,8 @@ func StressTestTask(j job.Job) (func(), func() interface{}, func()) {
 				dec := gob.NewDecoder(buf)
 				payload := &frontend.CruncherPayload{}
 				err := dec.Decode(payload)
-				go crunchNumbers(payload, evt)
 				j.Assert(err)
-				fmt.Printf("got evnt %v\n", evt)
+				go crunchNumbers(payload, evt)
 			}
 		}
 		return true

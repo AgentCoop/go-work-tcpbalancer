@@ -1,11 +1,9 @@
 package net
 
 import (
-	"fmt"
 	job "github.com/AgentCoop/go-work"
 	"net"
 	"sync/atomic"
-	"time"
 )
 
 func ListenTask(j job.Job) (func(), func() interface{}, func()) {
@@ -79,29 +77,19 @@ func connReadTask(j job.Job) (func(), func() interface{}, func()) {
 	run := func() interface{} {
 		ac := j.GetValue().(*ActiveConn)
 		frame, err, raw := df.Decode(ac.conn)
-		fmt.Printf("Decoded data frame %v\n", frame)
 		j.Assert(err)
 		evt := &Event{}
 		evt.conn = ac
 		if frame != nil {
-			evt.eventType = InDataFrame
 			evt.data = frame
 			ac.connManager.dataFrame <- evt
 		} else if raw != nil {
-			evt.eventType = InRawStream
 			evt.data = raw
+			ac.connManager.rawstream <- evt
 		}
-		//n, err := ac.conn.Read(readbuf)
-		//j.Assert(err)
-		//atomic.AddUint64(&ac.connManager.bytesReceived, uint64(n))
-		//ac.readChan <- readbuf[0:n]
-		//readbuf = readbuf[0:n]
-		fmt.Println("done")
-		time.Sleep(time.Second * 2)
 		return nil
 	}
 	cancel := func() {
-		fmt.Printf("Read cancel\n")
 		ac := j.GetValue().(*ActiveConn)
 		cm := ac.connManager
 		atomic.AddInt32(&cm.outboundCounter, -1)
