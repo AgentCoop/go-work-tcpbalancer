@@ -9,6 +9,8 @@ import (
 type ConnType int
 type ConnState int
 type EventType int
+type EventMap map[EventType]*Event
+type listenAddrMap map[string]n.Listener
 
 const (
 	Inbound ConnType = iota
@@ -21,10 +23,10 @@ const (
 )
 
 const (
-	DataFrameEvent EventType = iota
-	RawStreamEvent
-	NewOutboundConnEvent
-	InboundConnEstablished
+	DataFrame EventType = iota
+	RawStream
+	NewOutboundConn
+	NewInboundConn
 )
 
 func (s ConnType) String() string {
@@ -40,11 +42,17 @@ type ActiveConnectionsMap map[string]*ActiveConn
 type ConnManager interface {
 	GetBytesSent() uint64
 	GetBytesReceived() uint64
-	Connect(j job.Job) <-chan struct{}
+
+	ConnectTask(j job.Job) (func(), func() interface{}, func())
+	AcceptTask(j job.Job) (func(), func() interface{}, func())
+	ReadTask(j job.Job) (func(), func() interface{}, func())
+	WriteTask(j job.Job) (func(), func() interface{}, func())
 
 	DataFrameEvent() chan *Event
+	RawDataEvent() chan *Event
 	NewInboundEvent() chan *Event
 	NewOutboundEvent() chan *Event
+	OutboundClosedEvent() chan *Event
 }
 
 const (
@@ -54,8 +62,6 @@ const (
 var dataFrameMagicWord = [...]byte{ 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88 }
 
 type dataFrame struct {
-	len uint64
-	Data interface{}
 	readbuf []byte
 	tail []byte
 }
@@ -67,31 +73,32 @@ type Request struct {
 
 type ActiveConn struct {
 	conn n.Conn
+
 	writeChan chan interface{}
 	readChan chan interface{}
+	onNewConnChan chan struct{}
+	onConnCloseChan chan struct{}
+	onDataFrameChan chan []byte
+	onRawDataChan chan []byte
+
 	connManager *connManager
 	netJob	job.Job
 	state ConnState
 	typ ConnType
+	eventMapMu	*sync.Mutex
+	eventMap EventMap
+	df *dataFrame
+
+	value   interface{}
+	ValueMu sync.RWMutex
 }
 
 type Event struct {
-	conn      *ActiveConn
-	data      []byte
-	value interface{}
-	valueMu sync.RWMutex
-}
-
-func(e *Event) SetValue(value interface{}) {
-	//e.valueMu.Lock()
-	//defer e.valueMu.Unlock()
-	e.value = value
-}
-
-func(e *Event) GetValue() interface{} {
-	//e.valueMu.RLock()
-	//defer e.valueMu.RUnlock()
-	return e.value
+	typ     EventType
+	conn    *ActiveConn
+	data    []byte
+	value   interface{}
+	ValueMu sync.RWMutex
 }
 
 func(e *Event) GetData() []byte {
@@ -115,10 +122,11 @@ type connManager struct {
 
 	newInbound  chan *Event
 	newOutbound chan *Event
+	outboundClosed chan *Event
 	dataFrame   chan *Event
-	rawstream    chan *Event
+	rawdata     chan *Event
 
-	plis            n.Listener
-	network         string
-	addr            string
+	lisMap listenAddrMap
+	network       string
+	addr          string
 }

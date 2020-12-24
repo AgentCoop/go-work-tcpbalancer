@@ -9,7 +9,7 @@ import (
 	"github.com/AgentCoop/go-work-tcpbalancer/internal/frontend"
 )
 
-func crunchNumbers(payload *frontend.CruncherPayload, evt *net.Event) {
+func crunchNumbers(payload *frontend.CruncherPayload, ac *net.ActiveConn) {
 	result := &frontend.CruncherResult{}
 	result.SquaredNums = make([]uint64, payload.ItemsCount)
 	result.BatchNum = payload.BatchNum
@@ -19,29 +19,30 @@ func crunchNumbers(payload *frontend.CruncherPayload, evt *net.Event) {
 	// Send result back
 	// If connection to this time was closed the goroutine will try to write to the closed channel as well
 	// causing it panic and exit.
-	c := evt.GetActiveConn()
-	c.GetWriteChan() <- result
+	fmt.Printf(" <-send result back: batch #%d [ %v ]\n", result.BatchNum, result.SquaredNums)
+	ac.GetWriteChan() <- result
 }
 
 func CruncherTask(j job.Job) (func(), func() interface{}, func()) {
-	init := func() {
-
-	}
 	run := func() interface{} {
-		cm := j.GetValue().(net.ConnManager)
+		ac := j.GetValue().(*net.ActiveConn)
 		for {
 			select {
-			case evt := <-cm.DataFrameEvent():
-				buf := bytes.NewBuffer(evt.GetData())
+			case <-ac.GetOnNewConnChan():
+				fmt.Printf("<- new conn\n")
+			case frame := <-ac.GetOnDataFrameChan():
+				buf := bytes.NewBuffer(frame)
 				dec := gob.NewDecoder(buf)
 				payload := &frontend.CruncherPayload{}
 				err := dec.Decode(payload)
 				fmt.Printf(" <- new numbers to crunch %v\n", payload.Items)
 				j.Assert(err)
-				go crunchNumbers(payload, evt)
+				go crunchNumbers(payload, ac)
 			}
 		}
-		return true
+		return nil
 	}
-	return init, run, nil
+	return nil, run, func() {
+		fmt.Printf("Cruncher Task finishes\n")
+	}
 }

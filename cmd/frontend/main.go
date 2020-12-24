@@ -13,16 +13,21 @@ import (
 
 func connToProxy(connManager n.ConnManager) {
 	mainJob := j.NewJob(connManager)
-	mainJob.WithPrerequisites(connManager.Connect(mainJob))
+	//mainJob.WithPrerequisites(connManager.Connect(mainJob))
+	time.Sleep(time.Millisecond)
+	mainJob.AddOneshotTask(connManager.ConnectTask)
+	mainJob.AddTask(connManager.ReadTask)
+	mainJob.AddTask(connManager.WriteTask)
 	mainJob.AddTask(frontend.SquareNumsInBatchTask)
+	fmt.Printf("Wait for run\n")
 	<-mainJob.Run()
+	fmt.Printf("Done\n")
 	//go func(){
 	//	select {
 	//	case err := <- mainJob.GetError():
 	//		fmt.Printf("err %s\n", err)
 	//	}
 	//}()
-	time.Sleep(time.Second)
 }
 
 func main() {
@@ -38,9 +43,28 @@ func main() {
 
 	gob.Register(&frontend.CruncherPayload{})
 	connManager := n.NewConnManager("tcp4", frontend.CliOptions.ProxyHost)
+
+
+	//mainJob.WithPrerequisites(connManager.Connect(mainJob))
 	for {
-		//connToProxy(connManager)
-		connToProxy(connManager)
-		time.Sleep(time.Second)
+		mainJob := j.NewJob(nil)
+		mainJob.AddOneshotTask(connManager.ConnectTask)
+		mainJob.AddTask(connManager.ReadTask)
+		mainJob.AddTask(connManager.WriteTask)
+		mainJob.AddTask(frontend.SquareNumsInBatchTask)
+		fmt.Printf("Wait for run\n")
+		//select {
+		<-mainJob.Run()
+		//}
+		fmt.Printf("done waiting\n")
+		time.Sleep(500 * time.Millisecond)
 	}
+
+
+	//for {
+		//connToProxy(connManager)
+		//fmt.Printf("Connect to proxy\n")
+		//connToProxy(connManager)
+		//time.Sleep(time.Second)
+	//}
 }

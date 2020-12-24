@@ -4,14 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/gob"
+	"fmt"
 	n "net"
 )
-
-func NewDataFrame() *dataFrame {
-	f := &dataFrame{}
-	f.tail = nil
-	return f
-}
 
 func (f *dataFrame) Encode(data interface{}) ([]byte, error) {
 	var frame bytes.Buffer
@@ -37,10 +32,6 @@ func (f *dataFrame) Encode(data interface{}) ([]byte, error) {
 
 func (f *dataFrame) Decode(conn n.Conn) ([]byte, error, []byte) {
 	var framebuf []byte
-	if f.readbuf == nil {
-		f.readbuf = make([]byte, StreamReadBufferSize)
-	}
-
 	n1, err := conn.Read(f.readbuf)
 	if err != nil || n1 == 0 { return nil, err, nil }
 
@@ -61,22 +52,23 @@ func (f *dataFrame) Decode(conn n.Conn) ([]byte, error, []byte) {
 		mwl := len(dataFrameMagicWord)
 		r := bytes.NewReader(f.readbuf[mwl:2*mwl])
 		var fl uint64
-		var nn int
+		var nn, head, tail int
 		binary.Read(r, binary.BigEndian, &fl)
 		framebuf = make([]byte, fl)
-		tail := n1-8-mwl
-		for copy(framebuf[0:tail], f.readbuf[mwl+8:n1]); tail < len(framebuf); tail += nn {
+		//head = n1 - mwl - 8
+		for head = copy(framebuf[0:fl], f.readbuf[mwl+8:]); head < len(framebuf); {
+			fmt.Printf("Loop\n")
 			nn, err = r.Read(f.readbuf)
 			if err != nil { return nil, err, nil }
-			if tail+nn <= len(framebuf) {
-				copy(framebuf[tail:nn], f.readbuf[:nn])
-			} else {
-				left := tail + nn - cap(framebuf)
-				copy(framebuf[tail:left], f.readbuf[0:left])
-				f.tail = make([]byte, nn-left)
-				copy(f.tail, f.readbuf[left:nn])
-			}
+			head += copy(framebuf[head:], f.readbuf[:nn])
 		}
+		tail = nn - len(framebuf)
+		if tail > 0 {
+			fmt.Printf("Tail great")
+			f.tail= make([]byte, tail)
+			copy(f.tail[0:], f.readbuf[len(framebuf):])
+		}
+
 		return framebuf, nil, nil
 	} else {
 		return nil, nil, f.readbuf[0:n1]

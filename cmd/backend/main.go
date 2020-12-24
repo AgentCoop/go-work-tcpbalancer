@@ -10,6 +10,8 @@ import (
 	"strconv"
 )
 
+var mainJob j.Job
+
 func main() {
 	backend.DefaultCliOptions()
 	parser := flags.NewParser(&backend.CliOptions, flags.PassDoubleDash | flags.PrintErrors)
@@ -24,20 +26,26 @@ func main() {
 	localAddr := backend.CliOptions.Name + ":" + strconv.Itoa(port)
 	connManager := n.NewConnManager("tcp4", localAddr)
 
-	mainJob := j.NewJob(connManager)
-	mainJob.AddTask(n.ListenTask)
-
-	go func() {
-		for {
-			select {
-			case err := <-mainJob.GetError():
-				fmt.Printf("err: %s\n", err)
-			}
-		}
-	}()
-
-	mainJob.AddTask(backend.CruncherTask)
+	//go func() {
+	//	for {
+	//		select {
+	//		case err := <-mainJob.GetError():
+	//			fmt.Printf("err: %s\n", err)
+	//		}
+	//	}
+	//}()
 
 	fmt.Printf("💻 server [ %s ] is listening on port %d\n", backend.CliOptions.Name, port)
-	<-mainJob.Run()
+
+	for {
+		mainJob = j.NewJob(nil)
+		mainJob.AddOneshotTask(connManager.AcceptTask)
+		mainJob.AddTask(connManager.ReadTask)
+		mainJob.AddTask(connManager.WriteTask)
+		mainJob.AddTask(backend.CruncherTask)
+		ch1 := mainJob.RunInBackground()
+		fmt.Printf("Wait for conn on chan %v\n", ch1)
+		res := <-ch1
+		fmt.Printf("done waiting res %v\n", res)
+	}
 }

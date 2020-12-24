@@ -1,8 +1,7 @@
 package net
 
 import (
-	job "github.com/AgentCoop/go-work"
-	"net"
+	n "net"
 	"sync"
 )
 
@@ -10,10 +9,39 @@ func NewConnManager(network string, addr string) *connManager {
 	m := &connManager{network: network, addr: addr}
 	m.inboundConns = make(ActiveConnectionsMap)
 	m.outboundConns = make(ActiveConnectionsMap)
-	m.newInbound = make(chan *Event)
-	m.newOutbound = make(chan *Event)
-	m.dataFrame = make(chan *Event)
+	m.newInbound = make(chan *Event, 100)
+	m.newOutbound = make(chan *Event, 100)
+	m.dataFrame = make(chan *Event, 100)
+	m.outboundClosed = make(chan *Event)
+
+	m.lisMap = make(listenAddrMap)
 	return m
+}
+
+func (m *connManager) NewActiveConn(conn n.Conn, typ ConnType) *ActiveConn {
+	ac := &ActiveConn{conn: conn, typ: typ}
+	ac.eventMap = make(EventMap)
+	ac.eventMapMu = new(sync.Mutex)
+
+	ac.writeChan = make(chan interface{})
+	ac.readChan = make(chan interface{})
+
+
+	ac.onNewConnChan = make(chan struct{}, 1)
+	ac.onConnCloseChan = make(chan struct{}, 1)
+	ac.onDataFrameChan = make(chan []byte, 1)
+	ac.onRawDataChan = make(chan []byte, 1)
+
+	ac.connManager = m
+	ac.df = m.newDataFrame()
+	return ac
+}
+
+func (m *connManager) newDataFrame() *dataFrame {
+	f := &dataFrame{}
+	f.tail = nil
+	f.readbuf = make([]byte, StreamReadBufferSize)
+	return f
 }
 
 func (m *connManager) GetBytesSent() uint64 {
@@ -32,8 +60,16 @@ func (m *connManager) NewOutboundEvent() chan *Event {
 	return m.newOutbound
 }
 
+func (m *connManager) OutboundClosedEvent() chan *Event {
+	return m.outboundClosed
+}
+
 func (m *connManager) DataFrameEvent() chan *Event {
 	return m.dataFrame
+}
+
+func (m *connManager) RawDataEvent() chan *Event {
+	return m.rawdata
 }
 
 func (m *connManager) addConn(c *ActiveConn) {
@@ -69,51 +105,4 @@ func (m *connManager) delConn(c *ActiveConn) {
 	c.conn.Close()
 }
 
-func (c *ActiveConn) String() string {
-	return c.conn.RemoteAddr().String() + " -> " + c.conn.LocalAddr().String()
-}
-
-func (c *ActiveConn) Key() string {
-	return c.String()
-}
-
-func (c *ActiveConn) GetConn() net.Conn {
-	return c.conn
-}
-
-func (c *ActiveConn) GetNetJob() job.Job {
-	return c.netJob
-}
-
-func (c *ActiveConn) GetReadChan() chan interface{} {
-	return c.readChan
-}
-
-func (c *ActiveConn) GetWriteChan() chan<- interface{} {
-	return c.writeChan
-}
-
-func (c *connManager) Connect(j job.Job) <-chan struct{} {
-	ch := make(chan struct{})
-	go func() {
-		conn, err := net.Dial(c.network, c.addr)
-		if err != nil {
-			j.CancelWithError(err)
-			return
-		}
-		ac := &ActiveConn{conn: conn, typ: Outbound, state: Active}
-		ac.writeChan = make(chan interface{}, 1)
-		ac.readChan = make(chan interface{}, 1)
-		ac.connManager = c
-		newJob := job.NewJob(ac)
-		newJob.AddTask(connReadTask)
-		newJob.AddTask(connWriteTask)
-		ac.netJob = j
-		c.addConn(ac)
-		newJob.Run()
-		ch <- struct{}{}
-		c.newOutbound <- &Event{ conn: ac }
-	}()
-	return ch
-}
 
