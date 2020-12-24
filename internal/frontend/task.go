@@ -3,6 +3,7 @@ package frontend
 import (
 	"bytes"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	job "github.com/AgentCoop/go-work"
 	"github.com/AgentCoop/go-work-tcpbalancer/internal/common/net"
@@ -67,22 +68,20 @@ func SquareNumsInBatchTask(j job.Job) (func(), func() interface{}, func()) {
 	run := func() interface{} {
 		ac := j.GetValue().(*net.ActiveConn)
 		cm := ac.GetConnManager()
-		fmt.Printf("Connected\n")
+		//fmt.Printf("Connected\n")
 		select {
 		case <-ac.GetOnNewConnChan():
-			fmt.Printf("New conn\n")
 			go dispatchBatch(ac)
 		case raw := <- cm.RawDataEvent():
 			fmt.Printf("Raw data %v\n", raw)
 		case frame := <- ac.GetOnDataFrameChan():
-			fmt.Printf("New response frame\n")
 			buf := bytes.NewBuffer(frame)
 			dec := gob.NewDecoder(buf)
 			nums := &CruncherResult{}
 			err := dec.Decode(nums)
 			j.Assert(err)
 
-			fmt.Printf("Got crunched numbers for batch #%d %v\n", nums.BatchNum, nums.SquaredNums)
+			fmt.Printf("Got crunched numbers for batch #%d, %d\n", nums.BatchNum, len(nums.SquaredNums))
 
 			batchMap := ac.GetValue().(BatchMap)
 			if batchMap == nil {
@@ -101,25 +100,28 @@ func SquareNumsInBatchTask(j job.Job) (func(), func() interface{}, func()) {
 				return true
 			}
 
-			fmt.Printf("batch map %d, batch #%d: [%v]\n", len(batchMap), batch.BatchNum, batch.Items)
+			//fmt.Printf("batch map %d, batch #%d: [%v]\n", len(batchMap), batch.BatchNum, batch.Items)
 			//j.AssertTrue(ok, "failed to loop up batch")
 
+			ac.ValueMu.Lock()
 			for i := 0; i < batch.ItemsCount; i++ {
-				//if uint64(batch.Items[i] * batch.Items[i]) != nums.SquaredNums[i] {
-				//	fmt.Printf("#2\n")
-				//	j.Assert(errors.New("Batch processing failed"))
-				//}
-				//evt.ValueMu.Lock()
+				if uint64(batch.Items[i] * batch.Items[i]) != nums.SquaredNums[i] {
+					j.Assert(errors.New("Batch processing failed"))
+				}
 				delete(batchMap, nums.BatchNum)
-				//evt.ValueMu.Unlock()
 			}
+			fmt.Printf(" -> batch #%d with %d items verified\n", nums.BatchNum, len(nums.SquaredNums))
+			ac.ValueMu.Unlock()
 			//return true
 			if len(batchMap) == 0 {
 				// Close current connection, no more batches to dispatch
 				fmt.Printf("Finish batch crunching\n")
 				j.Cancel()
+				//ac.GetConn().Close()
 				return true
 			}
+			//default:
+				//fmt.Printf("nothing\n")
 		}
 		return nil
 	}

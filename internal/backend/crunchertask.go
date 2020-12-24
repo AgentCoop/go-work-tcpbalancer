@@ -19,7 +19,7 @@ func crunchNumbers(payload *frontend.CruncherPayload, ac *net.ActiveConn) {
 	// Send result back
 	// If connection to this time was closed the goroutine will try to write to the closed channel as well
 	// causing it panic and exit.
-	fmt.Printf(" <-send result back: batch #%d [ %v ]\n", result.BatchNum, result.SquaredNums)
+	fmt.Printf(" <-send result back: batch #%d\n", result.BatchNum)
 	ac.GetWriteChan() <- result
 }
 
@@ -35,7 +35,7 @@ func CruncherTask(j job.Job) (func(), func() interface{}, func()) {
 				dec := gob.NewDecoder(buf)
 				payload := &frontend.CruncherPayload{}
 				err := dec.Decode(payload)
-				fmt.Printf(" <- new numbers to crunch %v\n", payload.Items)
+				fmt.Printf(" <- new numbers to crunch %d\n", payload.ItemsCount)
 				j.Assert(err)
 				go crunchNumbers(payload, ac)
 			}

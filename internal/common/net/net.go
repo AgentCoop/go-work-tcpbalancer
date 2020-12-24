@@ -33,15 +33,9 @@ func (m *connManager) NewActiveConn(conn n.Conn, typ ConnType) *ActiveConn {
 	ac.onRawDataChan = make(chan []byte, 1)
 
 	ac.connManager = m
-	ac.df = m.newDataFrame()
+	ac.df = NewDataFrame()
+	ac.readbuf = make([]byte, StreamReadBufferSize)
 	return ac
-}
-
-func (m *connManager) newDataFrame() *dataFrame {
-	f := &dataFrame{}
-	f.tail = nil
-	f.readbuf = make([]byte, StreamReadBufferSize)
-	return f
 }
 
 func (m *connManager) GetBytesSent() uint64 {

@@ -67,9 +67,10 @@ func (c *connManager) WriteTask(j job.Job) (func(), func() interface{}, func()) 
 				fmt.Printf("Got NIL data\n")
 				// Handle error
 			default:
-				enc, err := ac.df.Encode(data)
+				enc, err := ac.df.toFrame(data)
 				j.Assert(err)
 				n, err = ac.conn.Write(enc)
+				fmt.Printf(" <- bytes wrote %d\n", n)
 				j.Assert(err)
 			}
 			atomic.AddUint64(&ac.connManager.bytesSent, uint64(n))
@@ -85,16 +86,16 @@ func (c *connManager) WriteTask(j job.Job) (func(), func() interface{}, func()) 
 func (c *connManager) ReadTask(j job.Job) (func(), func() interface{}, func()) {
 	run := func() interface{} {
 		ac := j.GetValue().(*ActiveConn)
-		frame, err, raw := ac.df.Decode(ac.conn)
+
+		n, err := ac.conn.Read(ac.readbuf)
 		j.Assert(err)
-		if frame != nil {
-			fmt.Printf("Reader send data frame\n")
-			ac.onDataFrameChan <- frame
-		} else if raw != nil {
-			fmt.Printf("Reader send raw data\n")
-			ac.onRawDataChan <- raw
-		} else {
-			fmt.Printf("Reader task no data\n")
+
+		ac.df.append(ac.readbuf[0:n])
+
+		if ac.df.isFullFrame() {
+			ac.onDataFrameChan <- ac.df.getFrame()
+		} else if ! ac.df.isFrame() {
+			ac.onRawDataChan <- ac.df.flush()
 		}
 		return nil
 	}
@@ -104,6 +105,8 @@ func (c *connManager) ReadTask(j job.Job) (func(), func() interface{}, func()) {
 		atomic.AddInt32(&cm.outboundCounter, -1)
 		close(ac.readChan)
 		close(ac.writeChan)
+		close(ac.onDataFrameChan)
+		close(ac.onRawDataChan)
 		cm.delConn(ac)
 	}
 	return nil, run, cancel

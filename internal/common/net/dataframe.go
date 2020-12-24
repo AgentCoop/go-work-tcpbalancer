@@ -4,11 +4,83 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/gob"
-	"fmt"
-	n "net"
 )
 
-func (f *dataFrame) Encode(data interface{}) ([]byte, error) {
+type dataFrame struct {
+	buf      []byte
+	tail     int
+	tailbuf  []byte
+	isFull   bool
+	framelen int
+}
+
+func NewDataFrame() *dataFrame {
+	df := &dataFrame{}
+	return df
+}
+
+func (f *dataFrame) isFullFrame() bool {
+	return f.isFull
+}
+
+func (f *dataFrame) isFrame() bool {
+	return f.tail > 0
+}
+
+func (f *dataFrame) append(data []byte) {
+	if f.isFull {
+		panic("data frame is full")
+	} else if f.tail == 0 && f.probe(data) {
+		// Calculate frame length and allocate data buffer
+		mwl := len(dataFrameMagicWord)
+		r := bytes.NewReader(data[mwl:2*mwl])
+		var fl uint64
+		binary.Read(r, binary.BigEndian, &fl)
+		f.buf = make([]byte, fl)
+		f.framelen = int(fl)
+
+		// Copy the rest of data
+		if len(f.tailbuf) > 0 {
+			f.tail += copy(f.buf[0:], f.tailbuf[0:])
+			f.tailbuf = nil
+		}
+
+		// Copy new data
+		f.tail += copy(f.buf[f.tail:f.framelen], data[0+mwl+8:])
+		if f.tail == f.framelen {
+			f.isFull = true
+		}
+	} else if f.tail > 0 {
+		f.tail += copy(f.buf[f.tail:], data[0:])
+		if f.tail == f.framelen {
+			f.isFull = true
+			rest := len(data) - f.framelen
+			if rest > 0 {
+				f.tailbuf = make([]byte, rest)
+				copy(f.tailbuf[0:], data[f.tail:])
+			}
+		}
+	} else {
+		f.buf = data
+	}
+}
+
+func (f *dataFrame) getFrame() []byte {
+	f.isFull = false
+	f.tail = 0
+	return f.buf
+}
+
+func (f *dataFrame) flush() []byte {
+	f.tail = 0
+	f.tailbuf = nil
+	f.isFull = false
+	out := make([]byte, len(f.buf))
+	copy(out[0:], f.buf[0:])
+	return out
+}
+
+func (f *dataFrame) toFrame(data interface{}) ([]byte, error) {
 	var frame bytes.Buffer
 	// Encode frame data
 	enc := gob.NewEncoder(&frame)
@@ -30,59 +102,16 @@ func (f *dataFrame) Encode(data interface{}) ([]byte, error) {
 	return buf, nil
 }
 
-func (f *dataFrame) Decode(conn n.Conn) ([]byte, error, []byte) {
-	var framebuf []byte
-	n1, err := conn.Read(f.readbuf)
-	if err != nil || n1 == 0 { return nil, err, nil }
-
-	if len(f.tail) > 0 { // Prepend tail data of the previous frame
-		switch len(f.tail)+n1 > cap(f.readbuf) {
-		case true:
-			newbuf := make([]byte, len(f.tail)+n1)
-			copy(newbuf[len(f.tail):n1], f.readbuf[0:n1])
-			f.readbuf = newbuf
-		default:
-			copy(f.readbuf[len(f.tail):n1], f.readbuf[0:n1])
-		}
-		copy(f.readbuf[0:], f.tail)
-		f.tail = f.tail[:0]
-	}
-
-	if f.probe() {
-		mwl := len(dataFrameMagicWord)
-		r := bytes.NewReader(f.readbuf[mwl:2*mwl])
-		var fl uint64
-		var nn, head, tail int
-		binary.Read(r, binary.BigEndian, &fl)
-		framebuf = make([]byte, fl)
-		//head = n1 - mwl - 8
-		for head = copy(framebuf[0:fl], f.readbuf[mwl+8:]); head < len(framebuf); {
-			fmt.Printf("Loop\n")
-			nn, err = r.Read(f.readbuf)
-			if err != nil { return nil, err, nil }
-			head += copy(framebuf[head:], f.readbuf[:nn])
-		}
-		tail = nn - len(framebuf)
-		if tail > 0 {
-			fmt.Printf("Tail great")
-			f.tail= make([]byte, tail)
-			copy(f.tail[0:], f.readbuf[len(framebuf):])
-		}
-
-		return framebuf, nil, nil
-	} else {
-		return nil, nil, f.readbuf[0:n1]
-	}
-}
-
-func (f *dataFrame) probe() bool {
-	if len(f.readbuf) < len(dataFrameMagicWord) {
+func (f *dataFrame) probe(buf []byte) bool {
+	if len(buf) < len(dataFrameMagicWord) {
 		return false
 	}
+
 	for i := 0; i < len(dataFrameMagicWord); i++ {
-		if f.readbuf[i] != dataFrameMagicWord[i] {
+		if buf[i] != dataFrameMagicWord[i] {
 			return false
 		}
 	}
+
 	return true
 }

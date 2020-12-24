@@ -6,7 +6,6 @@ import (
 	j "github.com/AgentCoop/go-work"
 	n "github.com/AgentCoop/go-work-tcpbalancer/internal/common/net"
 	"github.com/AgentCoop/go-work-tcpbalancer/internal/frontend"
-	"github.com/jessevdk/go-flags"
 	"os"
 	"time"
 )
@@ -31,9 +30,7 @@ func connToProxy(connManager n.ConnManager) {
 }
 
 func main() {
-	frontend.DefaultCliOptions()
-	parser := flags.NewParser(&frontend.CliOptions, flags.PassDoubleDash | flags.PrintErrors)
-	parser.ParseArgs(os.Args)
+	frontend.ParseCliOptions()
 
 	fmt.Printf("Host: %s\n", frontend.CliOptions.ProxyHost)
 	if len(frontend.CliOptions.ProxyHost) == 0 {
@@ -55,10 +52,11 @@ func main() {
 		fmt.Printf("Wait for run\n")
 		//select {
 		<-mainJob.Run()
-		//}
-		fmt.Printf("done waiting\n")
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(time.Second)
 	}
+	//	fmt.Printf("                                              done waiting\n")
+	//	time.Sleep(500 * time.Millisecond)
+	//}
 
 
 	//for {
