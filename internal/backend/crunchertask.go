@@ -29,7 +29,6 @@ func CruncherTask(j job.Job) (func(), func() interface{}, func()) {
 		for {
 			select {
 			case <-ac.GetOnNewConnChan():
-				fmt.Printf("<- new conn\n")
 			case frame := <-ac.GetOnDataFrameChan():
 				buf := bytes.NewBuffer(frame)
 				dec := gob.NewDecoder(buf)
@@ -42,7 +41,5 @@ func CruncherTask(j job.Job) (func(), func() interface{}, func()) {
 		}
 		return nil
 	}
-	return nil, run, func() {
-		fmt.Printf("Cruncher Task finishes\n")
-	}
+	return nil, run, nil
 }

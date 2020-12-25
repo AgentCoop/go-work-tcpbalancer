@@ -81,7 +81,7 @@ func SquareNumsInBatchTask(j job.Job) (func(), func() interface{}, func()) {
 			err := dec.Decode(nums)
 			j.Assert(err)
 
-			fmt.Printf("Got crunched numbers for batch #%d, %d\n", nums.BatchNum, len(nums.SquaredNums))
+			//fmt.Printf("Got crunched numbers for batch #%d, %d\n", nums.BatchNum, len(nums.SquaredNums))
 
 			batchMap := ac.GetValue().(BatchMap)
 			if batchMap == nil {
@@ -112,16 +112,12 @@ func SquareNumsInBatchTask(j job.Job) (func(), func() interface{}, func()) {
 			}
 			fmt.Printf(" -> batch #%d with %d items verified\n", nums.BatchNum, len(nums.SquaredNums))
 			ac.ValueMu.Unlock()
-			//return true
+
 			if len(batchMap) == 0 {
 				// Close current connection, no more batches to dispatch
-				fmt.Printf("Finish batch crunching\n")
 				j.Cancel()
-				//ac.GetConn().Close()
 				return true
 			}
-			//default:
-				//fmt.Printf("nothing\n")
 		}
 		return nil
 	}

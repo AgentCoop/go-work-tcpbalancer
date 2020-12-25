@@ -52,7 +52,7 @@ func main() {
 		fmt.Printf("Wait for run\n")
 		//select {
 		<-mainJob.Run()
-		time.Sleep(time.Second)
+		time.Sleep(100 * time.Millisecond)
 	}
 	//	fmt.Printf("                                              done waiting\n")
 	//	time.Sleep(500 * time.Millisecond)
