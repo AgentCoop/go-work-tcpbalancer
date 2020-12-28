@@ -32,7 +32,7 @@ func randInt(min int, max int) int {
 }
 
 func newBatch(num int) *CruncherPayload {
-	min, max := CliOptions.MinItemsPerBatch, CliOptions.MaxItemsPerBatch
+	min, max := NumCruncherOptions.MinItemsPerBatch, NumCruncherOptions.MaxItemsPerBatch
 	count := randInt(min, max)
 	r := &CruncherPayload{}
 	r.ItemsCount = count
@@ -45,7 +45,7 @@ func newBatch(num int) *CruncherPayload {
 }
 
 func dispatchBatch(ac *net.ActiveConn) {
-	min, max := CliOptions.MinBatchesPerConn, CliOptions.MaxBatchesPerConn
+	min, max := NumCruncherOptions.MinBatchesPerConn, NumCruncherOptions.MaxBatchesPerConn
 	nBatches := randInt(min, max)
 
 	// Map request data with response
@@ -62,7 +62,7 @@ func dispatchBatch(ac *net.ActiveConn) {
 	}
 }
 
-func SquareNumsInBatchTask(j job.Job) (func(), func() interface{}, func()) {
+func SquareNumsInBatchTask(j job.JobInterface) (func(), func() interface{}, func()) {
 	init := func() {	}
 
 	run := func() interface{} {

@@ -23,7 +23,7 @@ func crunchNumbers(payload *frontend.CruncherPayload, ac *net.ActiveConn) {
 	ac.GetWriteChan() <- result
 }
 
-func CruncherTask(j job.Job) (func(), func() interface{}, func()) {
+func CruncherTask(j job.JobInterface) (func(), func() interface{}, func()) {
 	run := func() interface{} {
 		ac := j.GetValue().(*net.ActiveConn)
 		for {

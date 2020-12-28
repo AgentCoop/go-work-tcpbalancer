@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 )
 
-func (c *connManager) ConnectTask(j job.Job) (func(), func() interface{}, func()) {
+func (c *connManager) ConnectTask(j job.JobInterface) (func(), func() interface{}, func()) {
 	run := func() interface{} {
 		conn, err := net.Dial(c.network, c.addr)
 		j.Assert(err)
@@ -20,7 +20,7 @@ func (c *connManager) ConnectTask(j job.Job) (func(), func() interface{}, func()
 	return nil, run, nil
 }
 
-func (c *connManager) AcceptTask(j job.Job) (func(), func() interface{}, func()) {
+func (c *connManager) AcceptTask(j job.JobInterface) (func(), func() interface{}, func()) {
 	run := func() interface{} {
 		var lis net.Listener
 		key := c.network + c.addr
@@ -50,7 +50,7 @@ func (c *connManager) AcceptTask(j job.Job) (func(), func() interface{}, func())
 	return nil, run, cancel
 }
 
-func (c *connManager) WriteTask(j job.Job) (func(), func() interface{}, func()) {
+func (c *connManager) WriteTask(j job.JobInterface) (func(), func() interface{}, func()) {
 	run := func() interface{} {
 		ac := j.GetValue().(*ActiveConn)
 		var n int
@@ -83,7 +83,7 @@ func (c *connManager) WriteTask(j job.Job) (func(), func() interface{}, func()) 
 	}
 }
 
-func (c *connManager) ReadTask(j job.Job) (func(), func() interface{}, func()) {
+func (c *connManager) ReadTask(j job.JobInterface) (func(), func() interface{}, func()) {
 	run := func() interface{} {
 		ac := j.GetValue().(*ActiveConn)
 

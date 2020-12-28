@@ -43,10 +43,10 @@ type ConnManager interface {
 	GetBytesSent() uint64
 	GetBytesReceived() uint64
 
-	ConnectTask(j job.Job) (func(), func() interface{}, func())
-	AcceptTask(j job.Job) (func(), func() interface{}, func())
-	ReadTask(j job.Job) (func(), func() interface{}, func())
-	WriteTask(j job.Job) (func(), func() interface{}, func())
+	ConnectTask(j job.JobInterface) (func(), func() interface{}, func())
+	AcceptTask(j job.JobInterface) (func(), func() interface{}, func())
+	ReadTask(j job.JobInterface) (func(), func() interface{}, func())
+	WriteTask(j job.JobInterface) (func(), func() interface{}, func())
 
 	DataFrameEvent() chan *Event
 	RawDataEvent() chan *Event

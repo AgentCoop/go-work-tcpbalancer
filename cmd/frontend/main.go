@@ -32,14 +32,14 @@ func connToProxy(connManager n.ConnManager) {
 func main() {
 	frontend.ParseCliOptions()
 
-	fmt.Printf("Host: %s\n", frontend.CliOptions.ProxyHost)
-	if len(frontend.CliOptions.ProxyHost) == 0 {
+	fmt.Printf("Host: %s\n", frontend.MainOptions.ProxyHost)
+	if len(frontend.MainOptions.ProxyHost) == 0 {
 		fmt.Printf("Specify a proxy server to connect to\n")
 		os.Exit(-1)
 	}
 
 	gob.Register(&frontend.CruncherPayload{})
-	connManager := n.NewConnManager("tcp4", frontend.CliOptions.ProxyHost)
+	connManager := n.NewConnManager("tcp4", frontend.MainOptions.ProxyHost)
 
 
 	//mainJob.WithPrerequisites(connManager.Connect(mainJob))
@@ -52,17 +52,6 @@ func main() {
 		fmt.Printf("Wait for run\n")
 		//select {
 		<-mainJob.Run()
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 	}
-	//	fmt.Printf("                                              done waiting\n")
-	//	time.Sleep(500 * time.Millisecond)
-	//}
-
-
-	//for {
-		//connToProxy(connManager)
-		//fmt.Printf("Connect to proxy\n")
-		//connToProxy(connManager)
-		//time.Sleep(time.Second)
-	//}
 }
