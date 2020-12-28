@@ -70,8 +70,9 @@ func (c *connManager) WriteTask(j job.JobInterface) (func(), func() interface{},
 				enc, err := ac.df.toFrame(data)
 				j.Assert(err)
 				n, err = ac.conn.Write(enc)
-				fmt.Printf(" <- bytes wrote %d\n", n)
+				fmt.Printf(" <- bytes wrote %d expected %d %v\n", n, len(enc), err)
 				j.Assert(err)
+				//j.AssertTrue(len(enc) == n, "net err")
 			}
 			atomic.AddUint64(&ac.connManager.bytesSent, uint64(n))
 			j.Assert(err)
@@ -88,6 +89,7 @@ func (c *connManager) ReadTask(j job.JobInterface) (func(), func() interface{}, 
 		ac := j.GetValue().(*ActiveConn)
 
 		n, err := ac.conn.Read(ac.readbuf)
+		fmt.Printf(" <- bytes read %d %v\n", n, err)
 		j.Assert(err)
 
 		ac.df.append(ac.readbuf[0:n])

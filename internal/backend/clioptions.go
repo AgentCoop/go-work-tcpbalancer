@@ -6,8 +6,8 @@ import (
 )
 
 var CliOptions struct {
-	CruncherPort int `long:"cruncher-port"`
-	ImgResizePort int `long:"img-resize-port"`
+	Port int `long:"port" short:"p"`
+	Service string `long:"service"`
 	Name string `long:"name" required:"true" description:"Server name"`
 }
 

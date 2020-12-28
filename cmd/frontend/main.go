@@ -6,6 +6,7 @@ import (
 	j "github.com/AgentCoop/go-work"
 	n "github.com/AgentCoop/go-work-tcpbalancer/internal/common/net"
 	"github.com/AgentCoop/go-work-tcpbalancer/internal/frontend"
+	"github.com/AgentCoop/go-work-tcpbalancer/internal/frontend/task"
 	"os"
 	"time"
 )
@@ -29,10 +30,29 @@ func connToProxy(connManager n.ConnManager) {
 	//}()
 }
 
+func startCruncherClient(manager n.ConnManager) {
+	mainJob := j.NewJob(nil)
+	mainJob.AddOneshotTask(manager.ConnectTask)
+	mainJob.AddTask(manager.ReadTask)
+	mainJob.AddTask(manager.WriteTask)
+	mainJob.AddTask(frontend.SquareNumsInBatchTask)
+	<-mainJob.Run()
+}
+
+func startImgResizerClient(manager n.ConnManager) {
+	mainJob := j.NewJob(nil)
+	mainJob.AddOneshotTask(manager.ConnectTask)
+	mainJob.AddTask(manager.ReadTask)
+	mainJob.AddTask(manager.WriteTask)
+	mainJob.AddTask(task.ScanForImagesTask)
+	mainJob.AddTask(task.SaveResizedImageTask)
+	<-mainJob.Run()
+	fmt.Printf("Done")
+}
+
 func main() {
 	frontend.ParseCliOptions()
 
-	fmt.Printf("Host: %s\n", frontend.MainOptions.ProxyHost)
 	if len(frontend.MainOptions.ProxyHost) == 0 {
 		fmt.Printf("Specify a proxy server to connect to\n")
 		os.Exit(-1)
@@ -41,17 +61,13 @@ func main() {
 	gob.Register(&frontend.CruncherPayload{})
 	connManager := n.NewConnManager("tcp4", frontend.MainOptions.ProxyHost)
 
-
-	//mainJob.WithPrerequisites(connManager.Connect(mainJob))
-	for {
-		mainJob := j.NewJob(nil)
-		mainJob.AddOneshotTask(connManager.ConnectTask)
-		mainJob.AddTask(connManager.ReadTask)
-		mainJob.AddTask(connManager.WriteTask)
-		mainJob.AddTask(frontend.SquareNumsInBatchTask)
-		fmt.Printf("Wait for run\n")
-		//select {
-		<-mainJob.Run()
-		time.Sleep(500 * time.Millisecond)
+	switch frontend.MainOptions.Service {
+	case "cruncher":
+		go startCruncherClient(connManager)
+		for {
+			time.Sleep(time.Nanosecond)
+		}
+	case "imgresize":
+		startImgResizerClient(connManager)
 	}
 }

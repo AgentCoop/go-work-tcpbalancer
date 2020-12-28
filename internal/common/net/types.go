@@ -56,7 +56,7 @@ type ConnManager interface {
 }
 
 const (
-	StreamReadBufferSize = 4096
+	StreamReadBufferSize = 2000000
 )
 
 var dataFrameMagicWord = [...]byte{ 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88 }

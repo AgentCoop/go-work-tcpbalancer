@@ -6,7 +6,7 @@ import (
 )
 
 type _MainOptions struct {
-	ProxyHost string `short:"h" required:"true" description:""`
+	ProxyHost string `long:"proxy" required:"true" description:""`
 	Service string `long:"service"`
 }
 
@@ -23,10 +23,10 @@ var NumCruncherOptions struct {
 
 var ImgResizeOptions struct {
 	_MainOptions
-	ImgDir string `long:"imgdir" required:"true"`
+	ImgDir string `long:"input" required:"true"`
 	OutputDir string `long:"output" required:"true"`
-	Width uint32 `short:"w" required:"true"`
-	Height uint32 `short:"h" required:"true"`
+	Width uint `short:"w" required:"true"`
+	Height uint `short:"h" required:"true"`
 }
 
 func ParseCliOptions() {
@@ -51,9 +51,10 @@ func ParseCliOptions() {
 		if NumCruncherOptions.MaxItemsPerBatch == 0 {
 			NumCruncherOptions.MaxItemsPerBatch = NumCruncherOptions.MinItemsPerBatch + 10
 		}
-	case "imgserv":
+	case "imgresize":
 		parser := flags.NewParser(&ImgResizeOptions, flags.PassDoubleDash | flags.PrintErrors)
-		parser.ParseArgs(os.Args)
+		_, err := parser.ParseArgs(os.Args)
+		if err != nil { panic(err) }
 	default:
 		os.Exit(-1)
 	}

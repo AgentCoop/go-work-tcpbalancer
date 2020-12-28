@@ -3,21 +3,31 @@ package imgresize
 type ImgType int
 
 const (
-	Jpg ImgType = iota
+	Jpeg ImgType = iota
 	Png
 	Gif
 )
 
-type Request struct {
-	OriginalName string
-	Typ ImgType
-	TargetWidth uint
-	TargetHeight uint
-	ImgData []byte
+func (t ImgType) ToFileExt() string {
+	return [...]string{".jpeg", ".png", ".giff"}[t]
 }
 
-type Response struct {
+type ImgInfo struct {
+	OriginalName string
+	Typ ImgType
 	Width uint
 	Height uint
 	ImgData []byte
+}
+
+type Request struct {
+	ImgInfo
+	TargetWidth uint
+	TargetHeight uint
+}
+
+type Response struct {
+	ImgInfo
+	ResizedWidth uint
+	ResizedHeight uint
 }

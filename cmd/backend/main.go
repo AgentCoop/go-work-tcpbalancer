@@ -27,6 +27,7 @@ func startCruncherServer(connManager n.ConnManager) {
 		mainJob.AddTask(connManager.WriteTask)
 		mainJob.AddTask(backend.CruncherTask)
 		<-mainJob.RunInBackground()
+		fmt.Printf("done job\n")
 	}
 }
 
@@ -43,27 +44,26 @@ func startImgServer(connManager n.ConnManager) {
 
 func main() {
 	backend.ParseCliOptions()
-	cruncherPort, imgPort := backend.CliOptions.CruncherPort, backend.CliOptions.ImgResizePort
 
-	if cruncherPort == 0 && imgPort == 0 {
+	if backend.CliOptions.Port == 0 {
+		fmt.Printf("Specify a TCP port to listen on\n")
 		os.Exit(-1)
 	}
 
-	if backend.CliOptions.CruncherPort > 0 {
-		connManager := newConnManager(backend.CliOptions.CruncherPort)
+	connManager := newConnManager(backend.CliOptions.Port)
+
+	switch backend.CliOptions.Service {
+	case "cruncher":
 		go startCruncherServer(connManager)
 		fmt.Printf("💻 [ %s:cruncher ] is listening on port %d\n",
-			backend.CliOptions.Name, backend.CliOptions.CruncherPort)
-	}
-
-	if backend.CliOptions.ImgResizePort > 0 {
-		connManager := newConnManager(backend.CliOptions.ImgResizePort)
+			backend.CliOptions.Name, backend.CliOptions.Port)
+	case "img":
 		go startImgServer(connManager)
 		fmt.Printf("💻 [ %s:img ] is listening on port %d\n",
-			backend.CliOptions.Name, backend.CliOptions.ImgResizePort)
+			backend.CliOptions.Name, backend.CliOptions.Port)
 	}
 
 	for {
-		time.Sleep(time.Millisecond)
+		time.Sleep(time.Second)
 	}
 }

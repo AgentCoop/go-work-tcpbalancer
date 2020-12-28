@@ -1,0 +1,87 @@
+package task
+
+import (
+	"bytes"
+	"encoding/gob"
+	"fmt"
+	job "github.com/AgentCoop/go-work"
+	"github.com/AgentCoop/go-work-tcpbalancer/internal/common/imgresize"
+	"github.com/AgentCoop/go-work-tcpbalancer/internal/common/net"
+	"github.com/AgentCoop/go-work-tcpbalancer/internal/frontend"
+	"io/ioutil"
+	"mime"
+	"os"
+	"path/filepath"
+	"time"
+)
+
+// Saves resized image to the output dir
+func SaveResizedImageTask(j job.JobInterface) (func(), func() interface{}, func()) {
+	init := func() {
+		if _, err := os.Stat(frontend.ImgResizeOptions.ImgDir); os.IsNotExist(err) {
+			j.Assert(err)
+		}
+		if _, err := os.Stat(frontend.ImgResizeOptions.OutputDir); os.IsNotExist(err) {
+			err := os.Mkdir(frontend.ImgResizeOptions.OutputDir, 755)
+			j.Assert(err)
+		}
+	}
+	run := func() interface{} {
+		res := &imgresize.Response{}
+		ac := j.GetValue().(*net.ActiveConn)
+		select {
+		case dataFrame := <-ac.GetOnDataFrameChan():
+			buf := bytes.NewBuffer(dataFrame)
+			dec := gob.NewDecoder(buf)
+			err := dec.Decode(res)
+			j.Assert(err)
+
+			baseName := fmt.Sprintf("%s-%dx%d.%s",
+				res.OriginalName, res.ResizedWidth, res.ResizedHeight, res.Typ.ToFileExt())
+			filename := frontend.ImgResizeOptions.OutputDir + string(os.PathSeparator) + baseName
+			ioutil.WriteFile(filename, res.ImgData, 775)
+		}
+		return nil
+	}
+	return init, run, func() {
+		fmt.Println("cancel save")
+	}
+}
+
+// Scans the given directory for images to resize.
+func ScanForImagesTask(j job.JobInterface) (func(), func() interface{}, func()) {
+	run := func() interface{} {
+		req := &imgresize.Request{}
+		req.TargetWidth = frontend.ImgResizeOptions.Width
+		req.TargetHeight = frontend.ImgResizeOptions.Height
+		filepath.Walk(frontend.ImgResizeOptions.ImgDir, func(path string, info os.FileInfo, err error) error {
+			j.Assert(err)
+			ac := j.GetValue().(*net.ActiveConn)
+
+			req.OriginalName = info.Name()
+			fileExt := filepath.Ext(info.Name())
+			switch mime.TypeByExtension(fileExt) {
+			case "image/jpeg":
+				req.Typ = imgresize.Jpeg
+			case "image/png":
+				req.Typ = imgresize.Png
+			default:
+				return nil
+			}
+
+			fmt.Printf("file %s %v\n", path, err)
+			data, err := ioutil.ReadFile(path)
+			j.Assert(err)
+			req.ImgData = data
+
+			ac.GetWriteChan() <- req
+			time.Sleep(time.Second)
+			return nil
+		})
+		fmt.Printf("scanner finished")
+		return true
+	}
+	return nil, run, func() {
+		fmt.Println("cancel scanner")
+	}
+}

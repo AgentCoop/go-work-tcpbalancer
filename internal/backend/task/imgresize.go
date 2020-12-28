@@ -3,12 +3,14 @@ package task
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	j "github.com/AgentCoop/go-work"
 	r "github.com/AgentCoop/go-work-tcpbalancer/internal/common/imgresize"
 	net "github.com/AgentCoop/go-work-tcpbalancer/internal/common/net"
 	"github.com/nfnt/resize"
 	"image"
 	"image/jpeg"
+	"image/png"
 )
 
 func resizeImage(j j.JobInterface, req *r.Request, ac *net.ActiveConn) {
@@ -18,31 +20,44 @@ func resizeImage(j j.JobInterface, req *r.Request, ac *net.ActiveConn) {
 	j.Assert(err)
 
 	m := resize.Resize(req.TargetWidth, req.TargetHeight, img, resize.Lanczos3)
-	jpeg.Encode(buf, m, nil)
+	switch req.Typ {
+	case r.Jpeg:
+		jpeg.Encode(buf, m, nil)
+	case r.Png:
+		png.Encode(buf, m)
+	}
 
 	result.ImgData = buf.Bytes()
-	result.Width = req.TargetWidth
-	result.Height = req.TargetHeight
+	result.Typ = req.Typ
+	result.OriginalName = req.OriginalName
+	result.ResizedWidth = req.TargetWidth
+	result.ResizedHeight = req.TargetHeight
 
+	fmt.Printf("write to chan\n")
 	ac.GetWriteChan() <- result
+	fmt.Printf("done write\n")
 }
 
 func ResizeImageTask(j j.JobInterface) (func(), func() interface{}, func()) {
 	run := func() interface{} {
 		ac := j.GetValue().(*net.ActiveConn)
 		for {
+			fmt.Printf("wait for frame\n")
 			select {
 			case <-ac.GetOnNewConnChan():
 			case frame := <-ac.GetOnDataFrameChan():
+				fmt.Printf("new frame\n")
 				buf := bytes.NewBuffer(frame)
 				dec := gob.NewDecoder(buf)
 				payload := &r.Request{}
 				err := dec.Decode(payload)
 				j.Assert(err)
-				go resizeImage(j, payload, ac)
+				resizeImage(j, payload, ac)
 			}
 		}
 		return nil
 	}
-	return nil, run, nil
+	return nil, run, func() {
+		fmt.Printf("Cancel resize job\n")
+	}
 }
