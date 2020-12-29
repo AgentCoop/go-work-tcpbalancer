@@ -24,6 +24,7 @@ func (m *connManager) NewActiveConn(conn n.Conn, typ ConnType) *ActiveConn {
 	ac.eventMapMu = new(sync.Mutex)
 
 	ac.writeChan = make(chan interface{})
+	ac.writeDoneChan = make(chan int)
 	ac.readChan = make(chan interface{})
 
 
@@ -98,5 +99,3 @@ func (m *connManager) delConn(c *ActiveConn) {
 	delete(connMap, c.Key())
 	c.conn.Close()
 }
-
-

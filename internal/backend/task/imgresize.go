@@ -35,7 +35,8 @@ func resizeImage(j j.JobInterface, req *r.Request, ac *net.ActiveConn) {
 
 	fmt.Printf("write to chan\n")
 	ac.GetWriteChan() <- result
-	fmt.Printf("done write\n")
+	//n := <-ac.GetWriteDoneChan()
+	//fmt.Printf("done write %d\n", n)
 }
 
 func ResizeImageTask(j j.JobInterface) (func(), func() interface{}, func()) {

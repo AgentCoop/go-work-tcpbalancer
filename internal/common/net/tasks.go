@@ -5,6 +5,7 @@ import (
 	job "github.com/AgentCoop/go-work"
 	"net"
 	"sync/atomic"
+	"time"
 )
 
 func (c *connManager) ConnectTask(j job.JobInterface) (func(), func() interface{}, func()) {
@@ -62,20 +63,18 @@ func (c *connManager) WriteTask(j job.JobInterface) (func(), func() interface{},
 				n, err = ac.conn.Write(data.([]byte))
 				j.Assert(err)
 			case nil:
-				a := 1
-				a++
-				fmt.Printf("Got NIL data\n")
+				fmt.Printf("NIL DATA")
 				// Handle error
 			default:
 				enc, err := ac.df.toFrame(data)
 				j.Assert(err)
 				n, err = ac.conn.Write(enc)
-				fmt.Printf(" <- bytes wrote %d expected %d %v\n", n, len(enc), err)
+				time.Sleep(time.Second)
+				fmt.Printf(" <- bytes wrote %d %v\n", n, err)
 				j.Assert(err)
-				//j.AssertTrue(len(enc) == n, "net err")
 			}
+			//ac.writeDoneChan <- n
 			atomic.AddUint64(&ac.connManager.bytesSent, uint64(n))
-			j.Assert(err)
 		}
 		return nil
 	}

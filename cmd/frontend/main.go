@@ -47,7 +47,9 @@ func startImgResizerClient(manager n.ConnManager) {
 	mainJob.AddTask(task.ScanForImagesTask)
 	mainJob.AddTask(task.SaveResizedImageTask)
 	<-mainJob.Run()
-	fmt.Printf("Done")
+	fmt.Printf("-- [ Network Statistics ] --\n")
+	fmt.Printf("\tbytes sent: %0.2f Mb\n", float64(manager.GetBytesSent() / 10e6))
+	fmt.Printf("\tbytes received: %0.2f Mb\n", float64(manager.GetBytesReceived()))
 }
 
 func main() {
@@ -63,10 +65,7 @@ func main() {
 
 	switch frontend.MainOptions.Service {
 	case "cruncher":
-		go startCruncherClient(connManager)
-		for {
-			time.Sleep(time.Nanosecond)
-		}
+		startCruncherClient(connManager)
 	case "imgresize":
 		startImgResizerClient(connManager)
 	}

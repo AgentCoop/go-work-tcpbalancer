@@ -12,7 +12,6 @@ import (
 	"mime"
 	"os"
 	"path/filepath"
-	"time"
 )
 
 // Saves resized image to the output dir
@@ -48,6 +47,10 @@ func SaveResizedImageTask(j job.JobInterface) (func(), func() interface{}, func(
 	}
 }
 
+func JobTask() {
+
+}
+
 // Scans the given directory for images to resize.
 func ScanForImagesTask(j job.JobInterface) (func(), func() interface{}, func()) {
 	run := func() interface{} {
@@ -75,10 +78,12 @@ func ScanForImagesTask(j job.JobInterface) (func(), func() interface{}, func()) 
 			req.ImgData = data
 
 			ac.GetWriteChan() <- req
-			time.Sleep(time.Second)
+			fmt.Printf("wait for write done\n")
+			//<-ac.GetWriteDoneChan()
+			//fmt.Printf("wdone\n")
+			//time.Sleep(time.Second)
 			return nil
 		})
-		fmt.Printf("scanner finished")
 		return true
 	}
 	return nil, run, func() {

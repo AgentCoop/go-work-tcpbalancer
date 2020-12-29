@@ -70,6 +70,7 @@ type ActiveConn struct {
 	conn n.Conn
 
 	writeChan chan interface{}
+	writeDoneChan chan int
 	readChan chan interface{}
 	onNewConnChan chan struct{}
 	onConnCloseChan chan struct{}

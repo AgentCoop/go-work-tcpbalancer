@@ -54,6 +54,10 @@ func (c *ActiveConn) GetWriteChan() chan<- interface{} {
 	return c.writeChan
 }
 
+func (c *ActiveConn) GetWriteDoneChan() <-chan int {
+	return c.writeDoneChan
+}
+
 func (c *ActiveConn) GetEvent(typ EventType) *Event {
 	c.eventMapMu.Lock()
 	defer c.eventMapMu.Unlock()
