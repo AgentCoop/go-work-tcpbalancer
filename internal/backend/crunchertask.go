@@ -24,7 +24,7 @@ func crunchNumbers(payload *frontend.CruncherPayload, ac *net.ActiveConn) {
 }
 
 func CruncherTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
-	run := func(t *job.TaskInfo) interface{} {
+	run := func(t *job.TaskInfo) {
 		ac := j.GetValue().(*net.ActiveConn)
 		for {
 			select {
@@ -39,7 +39,6 @@ func CruncherTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 				go crunchNumbers(payload, ac)
 			}
 		}
-		return nil
 	}
 	return nil, run, nil
 }

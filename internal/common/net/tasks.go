@@ -9,20 +9,21 @@ import (
 )
 
 func (c *connManager) ConnectTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
-	run := func(t *job.TaskInfo) interface{} {
+	run := func(t *job.TaskInfo) {
 		conn, err := net.Dial(c.network, c.addr)
 		j.Assert(err)
 		ac := c.NewActiveConn(conn, Outbound)
 		j.SetValue(ac)
 		c.addConn(ac)
-		ac.onNewConnChan <- struct{}{}
-		return true
+		//t.GetDoneChan() <- job.DoneSig
+		ac.onNewConnChan <- job.DoneSig
+		t.Done()
 	}
 	return nil, run, nil
 }
 
 func (c *connManager) AcceptTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
-	run := func(t *job.TaskInfo) interface{} {
+	run := func(t *job.TaskInfo) {
 		var lis net.Listener
 		key := c.network + c.addr
 		if _, ok := c.lisMap[key]; ! ok {
@@ -41,9 +42,9 @@ func (c *connManager) AcceptTask(j job.JobInterface) (job.Init, job.Run, job.Can
 		ac := c.NewActiveConn(conn, Inbound)
 		j.SetValue(ac)
 		c.addConn(ac)
-		//evt := ac.GetEvent(NewInboundConn)
-		ac.onNewConnChan <- struct{}{}
-		return true
+
+		ac.onNewConnChan <- job.DoneSig
+		t.Done()
 	}
 	cancel := func() {
 		fmt.Printf("Reader Task finishes\n")
@@ -52,7 +53,7 @@ func (c *connManager) AcceptTask(j job.JobInterface) (job.Init, job.Run, job.Can
 }
 
 func (c *connManager) WriteTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
-	run := func(t *job.TaskInfo) interface{} {
+	run := func(t *job.TaskInfo) {
 		ac := j.GetValue().(*ActiveConn)
 		var n int
 		var err error
@@ -76,7 +77,6 @@ func (c *connManager) WriteTask(j job.JobInterface) (job.Init, job.Run, job.Canc
 			//ac.writeDoneChan <- n
 			atomic.AddUint64(&ac.connManager.bytesSent, uint64(n))
 		}
-		return nil
 	}
 	cancel := func()  {
 		fmt.Printf("Write Task finishes\n")
@@ -85,7 +85,7 @@ func (c *connManager) WriteTask(j job.JobInterface) (job.Init, job.Run, job.Canc
 }
 
 func (c *connManager) ReadTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
-	run := func(t *job.TaskInfo) interface{} {
+	run := func(t *job.TaskInfo) {
 		ac := j.GetValue().(*ActiveConn)
 
 		n, err := ac.conn.Read(ac.readbuf)
@@ -99,7 +99,6 @@ func (c *connManager) ReadTask(j job.JobInterface) (job.Init, job.Run, job.Cance
 		} else if ! ac.df.isFrame() {
 			ac.onRawDataChan <- ac.df.flush()
 		}
-		return nil
 	}
 	cancel := func() {
 		ac := j.GetValue().(*ActiveConn)

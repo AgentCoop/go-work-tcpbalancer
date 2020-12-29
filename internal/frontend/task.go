@@ -63,9 +63,7 @@ func dispatchBatch(ac *net.ActiveConn) {
 }
 
 func SquareNumsInBatchTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
-	init := func() {	}
-
-	run := func(t *job.TaskInfo) interface{} {
+	run := func(t *job.TaskInfo) {
 		ac := j.GetValue().(*net.ActiveConn)
 		cm := ac.GetConnManager()
 		//fmt.Printf("Connected\n")
@@ -86,18 +84,18 @@ func SquareNumsInBatchTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 			batchMap := ac.GetValue().(BatchMap)
 			if batchMap == nil {
 				fmt.Printf("Empty batch map\n")
-				return true
+				return
 			}
 
 			if nums == nil {
 				fmt.Printf("Empty payload")
-				return true
+				return
 			}
 
 			batch, ok := batchMap[nums.BatchNum]
 			if  ! ok {
 				fmt.Printf("No batch\n")
-				return true
+				return
 			}
 
 			//fmt.Printf("batch map %d, batch #%d: [%v]\n", len(batchMap), batch.BatchNum, batch.Items)
@@ -116,15 +114,15 @@ func SquareNumsInBatchTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 			if len(batchMap) == 0 {
 				// Close current connection, no more batches to dispatch
 				j.Cancel()
-				return true
+				return
 			}
 		}
-		return nil
+		t.Done()
 	}
 
 	cancel := func() {
 		fmt.Printf("Canceling job\n")
 	}
 
-	return init, run, cancel
+	return nil, run, cancel
 }

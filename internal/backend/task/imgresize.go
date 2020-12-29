@@ -40,7 +40,7 @@ func resizeImage(j job.JobInterface, req *r.Request, ac *net.ActiveConn) {
 }
 
 func ResizeImageTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
-	run := func(t *job.TaskInfo) interface{} {
+	run := func(t *job.TaskInfo) {
 		ac := j.GetValue().(*net.ActiveConn)
 		for {
 			fmt.Printf("wait for frame\n")
@@ -56,7 +56,6 @@ func ResizeImageTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 				resizeImage(j, payload, ac)
 			}
 		}
-		return nil
 	}
 	return nil, run, func() {
 		fmt.Printf("Cancel resize job\n")
