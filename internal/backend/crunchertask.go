@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	job "github.com/AgentCoop/go-work"
+	"github.com/AgentCoop/go-work"
 	"github.com/AgentCoop/go-work-tcpbalancer/internal/common/net"
 	"github.com/AgentCoop/go-work-tcpbalancer/internal/frontend"
 )
@@ -23,8 +23,8 @@ func crunchNumbers(payload *frontend.CruncherPayload, ac *net.ActiveConn) {
 	ac.GetWriteChan() <- result
 }
 
-func CruncherTask(j job.JobInterface) (func(), func() interface{}, func()) {
-	run := func() interface{} {
+func CruncherTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
+	run := func(t *job.TaskInfo) interface{} {
 		ac := j.GetValue().(*net.ActiveConn)
 		for {
 			select {

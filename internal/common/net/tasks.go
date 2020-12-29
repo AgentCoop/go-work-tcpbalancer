@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-func (c *connManager) ConnectTask(j job.JobInterface) (func(), func() interface{}, func()) {
-	run := func() interface{} {
+func (c *connManager) ConnectTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
+	run := func(t *job.TaskInfo) interface{} {
 		conn, err := net.Dial(c.network, c.addr)
 		j.Assert(err)
 		ac := c.NewActiveConn(conn, Outbound)
@@ -21,8 +21,8 @@ func (c *connManager) ConnectTask(j job.JobInterface) (func(), func() interface{
 	return nil, run, nil
 }
 
-func (c *connManager) AcceptTask(j job.JobInterface) (func(), func() interface{}, func()) {
-	run := func() interface{} {
+func (c *connManager) AcceptTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
+	run := func(t *job.TaskInfo) interface{} {
 		var lis net.Listener
 		key := c.network + c.addr
 		if _, ok := c.lisMap[key]; ! ok {
@@ -51,8 +51,8 @@ func (c *connManager) AcceptTask(j job.JobInterface) (func(), func() interface{}
 	return nil, run, cancel
 }
 
-func (c *connManager) WriteTask(j job.JobInterface) (func(), func() interface{}, func()) {
-	run := func() interface{} {
+func (c *connManager) WriteTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
+	run := func(t *job.TaskInfo) interface{} {
 		ac := j.GetValue().(*ActiveConn)
 		var n int
 		var err error
@@ -78,13 +78,14 @@ func (c *connManager) WriteTask(j job.JobInterface) (func(), func() interface{},
 		}
 		return nil
 	}
-	return nil, run, func() {
+	cancel := func()  {
 		fmt.Printf("Write Task finishes\n")
 	}
+	return nil, run, cancel
 }
 
-func (c *connManager) ReadTask(j job.JobInterface) (func(), func() interface{}, func()) {
-	run := func() interface{} {
+func (c *connManager) ReadTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
+	run := func(t *job.TaskInfo) interface{} {
 		ac := j.GetValue().(*ActiveConn)
 
 		n, err := ac.conn.Read(ac.readbuf)

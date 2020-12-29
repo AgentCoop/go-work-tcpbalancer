@@ -15,7 +15,7 @@ import (
 )
 
 // Saves resized image to the output dir
-func SaveResizedImageTask(j job.JobInterface) (func(), func() interface{}, func()) {
+func SaveResizedImageTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 	init := func() {
 		if _, err := os.Stat(frontend.ImgResizeOptions.ImgDir); os.IsNotExist(err) {
 			j.Assert(err)
@@ -25,7 +25,7 @@ func SaveResizedImageTask(j job.JobInterface) (func(), func() interface{}, func(
 			j.Assert(err)
 		}
 	}
-	run := func() interface{} {
+	run := func(t *job.TaskInfo) interface{} {
 		res := &imgresize.Response{}
 		ac := j.GetValue().(*net.ActiveConn)
 		select {
@@ -47,13 +47,22 @@ func SaveResizedImageTask(j job.JobInterface) (func(), func() interface{}, func(
 	}
 }
 
-func JobTask() {
+type ImageScanner struct {
+	inputDir string
+	outputDir string
+}
 
+func NewImageScanner(input string, output string) *ImageScanner {
+	s := &ImageScanner{
+		inputDir:  input,
+		outputDir: output,
+	}
+	return s
 }
 
 // Scans the given directory for images to resize.
-func ScanForImagesTask(j job.JobInterface) (func(), func() interface{}, func()) {
-	run := func() interface{} {
+func ScanForImagesTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
+	run := func(t *job.TaskInfo) interface{} {
 		req := &imgresize.Request{}
 		req.TargetWidth = frontend.ImgResizeOptions.Width
 		req.TargetHeight = frontend.ImgResizeOptions.Height

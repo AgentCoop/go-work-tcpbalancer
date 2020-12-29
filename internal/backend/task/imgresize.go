@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	j "github.com/AgentCoop/go-work"
+	"github.com/AgentCoop/go-work"
 	r "github.com/AgentCoop/go-work-tcpbalancer/internal/common/imgresize"
 	net "github.com/AgentCoop/go-work-tcpbalancer/internal/common/net"
 	"github.com/nfnt/resize"
@@ -13,7 +13,7 @@ import (
 	"image/png"
 )
 
-func resizeImage(j j.JobInterface, req *r.Request, ac *net.ActiveConn) {
+func resizeImage(j job.JobInterface, req *r.Request, ac *net.ActiveConn) {
 	result := &r.Response{}
 	buf := bytes.NewBuffer(req.ImgData)
 	img, _, err := image.Decode(buf)
@@ -39,8 +39,8 @@ func resizeImage(j j.JobInterface, req *r.Request, ac *net.ActiveConn) {
 	//fmt.Printf("done write %d\n", n)
 }
 
-func ResizeImageTask(j j.JobInterface) (func(), func() interface{}, func()) {
-	run := func() interface{} {
+func ResizeImageTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
+	run := func(t *job.TaskInfo) interface{} {
 		ac := j.GetValue().(*net.ActiveConn)
 		for {
 			fmt.Printf("wait for frame\n")

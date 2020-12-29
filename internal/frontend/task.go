@@ -62,10 +62,10 @@ func dispatchBatch(ac *net.ActiveConn) {
 	}
 }
 
-func SquareNumsInBatchTask(j job.JobInterface) (func(), func() interface{}, func()) {
+func SquareNumsInBatchTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 	init := func() {	}
 
-	run := func() interface{} {
+	run := func(t *job.TaskInfo) interface{} {
 		ac := j.GetValue().(*net.ActiveConn)
 		cm := ac.GetConnManager()
 		//fmt.Printf("Connected\n")
