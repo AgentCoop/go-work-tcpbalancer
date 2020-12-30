@@ -35,26 +35,23 @@ func resizeImage(j job.JobInterface, req *r.Request, ac *net.ActiveConn) {
 
 	fmt.Printf("write to chan\n")
 	ac.GetWriteChan() <- result
-	//n := <-ac.GetWriteDoneChan()
-	//fmt.Printf("done write %d\n", n)
+	n := <-ac.GetWriteDoneChan()
+	fmt.Printf("done write %d\n", n)
 }
 
 func ResizeImageTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 	run := func(t *job.TaskInfo) {
 		ac := j.GetValue().(*net.ActiveConn)
-		for {
-			fmt.Printf("wait for frame\n")
-			select {
-			case <-ac.GetOnNewConnChan():
-			case frame := <-ac.GetOnDataFrameChan():
-				fmt.Printf("new frame\n")
-				buf := bytes.NewBuffer(frame)
-				dec := gob.NewDecoder(buf)
-				payload := &r.Request{}
-				err := dec.Decode(payload)
-				j.Assert(err)
-				resizeImage(j, payload, ac)
-			}
+		select {
+		case <-ac.GetOnNewConnChan():
+		case frame := <-ac.GetOnDataFrameChan():
+			fmt.Printf("new frame %d bytes\n", len(frame))
+			buf := bytes.NewBuffer(frame)
+			dec := gob.NewDecoder(buf)
+			payload := &r.Request{}
+			err := dec.Decode(payload)
+			j.Assert(err)
+			go resizeImage(j, payload, ac)
 		}
 	}
 	return nil, run, func() {

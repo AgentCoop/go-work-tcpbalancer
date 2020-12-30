@@ -1,4 +1,4 @@
-package task
+package frontend
 
 import (
 	"bytes"
@@ -7,37 +7,49 @@ import (
 	job "github.com/AgentCoop/go-work"
 	"github.com/AgentCoop/go-work-tcpbalancer/internal/common/imgresize"
 	"github.com/AgentCoop/go-work-tcpbalancer/internal/common/net"
-	"github.com/AgentCoop/go-work-tcpbalancer/internal/frontend"
 	"io/ioutil"
 	"mime"
 	"os"
 	"path/filepath"
 )
 
+type ImageResizer struct {
+	inputDir string
+	outputDir string
+	w uint
+	h uint
+	foundCounter int
+	savedCounter int
+	done bool
+}
+
+func NewImageResizer(input string, output string, w uint, h uint) *ImageResizer {
+	s := &ImageResizer{
+		inputDir:  input,
+		outputDir: output,
+		w: w,
+		h: h,
+	}
+	return s
+}
+
 // Saves resized image to the output dir
-func SaveResizedImageTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
-	var nScanned int
+func (s *ImageResizer) SaveResizedImageTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 	init := func(t *job.TaskInfo) {
-		if _, err := os.Stat(frontend.ImgResizeOptions.ImgDir); os.IsNotExist(err) {
+		if _, err := os.Stat(s.inputDir); os.IsNotExist(err) {
 			j.Assert(err)
 		}
-		if _, err := os.Stat(frontend.ImgResizeOptions.OutputDir); os.IsNotExist(err) {
-			err := os.Mkdir(frontend.ImgResizeOptions.OutputDir, 755)
+		if _, err := os.Stat(s.outputDir); os.IsNotExist(err) {
+			err := os.Mkdir(s.outputDir, 755)
 			j.Assert(err)
 		}
-		t.SetResult(0) // saved images counter
 	}
 	run := func(t *job.TaskInfo) {
-		res := &imgresize.Response{}
+		//res := &imgresize.Response{}
 		ac := j.GetValue().(*net.ActiveConn)
 		select {
-		case scannerTask := <- t.GetDepChan():
-			if scannerTask == nil {
-				return
-			}
-			fmt.Printf("Scanner finished with %d\n", scannerTask.GetResult().(int))
-			nScanned = scannerTask.GetResult().(int)
 		case dataFrame := <-ac.GetOnDataFrameChan():
+			res := &imgresize.Response{}
 			buf := bytes.NewBuffer(dataFrame)
 			dec := gob.NewDecoder(buf)
 			err := dec.Decode(res)
@@ -45,13 +57,14 @@ func SaveResizedImageTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 
 			baseName := fmt.Sprintf("%s-%dx%d.%s",
 				res.OriginalName, res.ResizedWidth, res.ResizedHeight, res.Typ.ToFileExt())
-			filename := frontend.ImgResizeOptions.OutputDir + string(os.PathSeparator) + baseName
+			filename := s.outputDir + string(os.PathSeparator) + baseName
 			ioutil.WriteFile(filename, res.ImgData, 775)
+			s.savedCounter++
 
 			// Finish job
-			if nScanned > 0 {
+			if s.done && s.savedCounter >= s.foundCounter {
 				fmt.Printf("Finish job\n")
-				j.Cancel()
+				//j.Cancel()
 			}
 		}
 	}
@@ -60,29 +73,16 @@ func SaveResizedImageTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 	}
 }
 
-type ImageScanner struct {
-	inputDir string
-	outputDir string
-}
-
-func NewImageScanner(input string, output string) *ImageScanner {
-	s := &ImageScanner{
-		inputDir:  input,
-		outputDir: output,
-	}
-	return s
-}
-
 // Scans the given directory for images to resize.
-func ScanForImagesTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
+func (s *ImageResizer) ScanForImagesTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 	init := func(t *job.TaskInfo) {
 		t.SetResult(0) // scanned images counter
 	}
 	run := func(t *job.TaskInfo) {
 		req := &imgresize.Request{}
-		req.TargetWidth = frontend.ImgResizeOptions.Width
-		req.TargetHeight = frontend.ImgResizeOptions.Height
-		filepath.Walk(frontend.ImgResizeOptions.ImgDir, func(path string, info os.FileInfo, err error) error {
+		req.TargetWidth = s.w
+		req.TargetHeight = s.h
+		filepath.Walk(s.inputDir, func(path string, info os.FileInfo, err error) error {
 			j.Assert(err)
 			ac := j.GetValue().(*net.ActiveConn)
 
@@ -103,17 +103,12 @@ func ScanForImagesTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 			req.ImgData = data
 
 			ac.GetWriteChan() <- req
+			<-ac.GetWriteDoneChan()
 
-			nScanned := t.GetResult().(int)
-			nScanned++
-			t.SetResult(nScanned)
-
-			fmt.Printf("wait for write done\n")
-			//<-ac.GetWriteDoneChan()
-			//fmt.Printf("wdone\n")
-			//time.Sleep(time.Second)
+			s.foundCounter++
 			return nil
 		})
+		s.done = true
 		t.Done()
 	}
 	return init, run, func() {

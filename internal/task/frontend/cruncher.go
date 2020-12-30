@@ -10,6 +10,13 @@ import (
 	"math/rand"
 )
 
+type Cruncher struct {
+	minItems uint // per batch
+	maxItems uint
+	minBatches uint // per connection
+	maxBatches uint
+}
+
 type CruncherPayload struct {
 	BatchNum int
 	ItemsCount int
@@ -23,17 +30,30 @@ type CruncherResult struct {
 	SquaredNums []uint64
 }
 
+// Returns a random integer number from the specified range
 func randInt(min int, max int) int {
-	if max == min {
-		return min
-	} else {
-		return rand.Intn(max - min + 1) + min
+	if max <= min {
+		max = min + 1
 	}
+	return rand.Intn(max - min + 1) + min
 }
 
-func newBatch(num int) *CruncherPayload {
-	min, max := NumCruncherOptions.MinItemsPerBatch, NumCruncherOptions.MaxItemsPerBatch
-	count := randInt(min, max)
+func NewCruncher(minBatches uint, maxBatches uint, minItems uint, maxItems uint) *Cruncher {
+	c := &Cruncher{
+		minItems:   1,
+		maxItems:   10,
+		minBatches: 1,
+		maxBatches: 1,
+	}
+	if minBatches > 0 { c.minBatches = minBatches }
+	if maxBatches > 0 { c.maxBatches = maxBatches }
+	if minItems > 0 { c.minItems = minItems }
+	if maxItems > 0 { c.maxItems = maxItems }
+	return c
+}
+
+func (c *Cruncher) newBatch(num int) *CruncherPayload {
+	count := randInt(int(c.minItems), int(c.maxItems))
 	r := &CruncherPayload{}
 	r.ItemsCount = count
 	r.Items = make([]uint32,count)
@@ -44,32 +64,29 @@ func newBatch(num int) *CruncherPayload {
 	return r
 }
 
-func dispatchBatch(ac *net.ActiveConn) {
-	min, max := NumCruncherOptions.MinBatchesPerConn, NumCruncherOptions.MaxBatchesPerConn
-	nBatches := randInt(min, max)
-
+func (c *Cruncher) dispatchBatch(ac *net.ActiveConn) {
+	nBatches := randInt(int(c.minBatches), int(c.maxBatches))
 	// Map request data with response
 	bp := make(BatchMap)
 	for i := 0; i < nBatches; i++{
-		batch := newBatch(i + 1)
+		batch := c.newBatch(i + 1)
 		bp[i + 1] = batch
 	}
 	ac.SetValue(bp)
-
 	for _, v := range bp {
 		fmt.Printf(" ->  batch #%d, items %d\n", v.BatchNum, v.ItemsCount)
 		ac.GetWriteChan() <- v
 	}
 }
 
-func SquareNumsInBatchTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
+func (c *Cruncher) SquareNumsInBatchTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 	run := func(t *job.TaskInfo) {
 		ac := j.GetValue().(*net.ActiveConn)
 		cm := ac.GetConnManager()
 		//fmt.Printf("Connected\n")
 		select {
 		case <-ac.GetOnNewConnChan():
-			go dispatchBatch(ac)
+			go c.dispatchBatch(ac)
 		case raw := <- cm.RawDataEvent():
 			fmt.Printf("Raw data %v\n", raw)
 		case frame := <- ac.GetOnDataFrameChan():
@@ -97,9 +114,6 @@ func SquareNumsInBatchTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 				fmt.Printf("No batch\n")
 				return
 			}
-
-			//fmt.Printf("batch map %d, batch #%d: [%v]\n", len(batchMap), batch.BatchNum, batch.Items)
-			//j.AssertTrue(ok, "failed to loop up batch")
 
 			ac.ValueMu.Lock()
 			for i := 0; i < batch.ItemsCount; i++ {

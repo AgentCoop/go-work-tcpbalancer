@@ -5,7 +5,6 @@ import (
 	job "github.com/AgentCoop/go-work"
 	"net"
 	"sync/atomic"
-	"time"
 )
 
 func (c *connManager) ConnectTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
@@ -70,11 +69,10 @@ func (c *connManager) WriteTask(j job.JobInterface) (job.Init, job.Run, job.Canc
 				enc, err := ac.df.toFrame(data)
 				j.Assert(err)
 				n, err = ac.conn.Write(enc)
-				time.Sleep(time.Second)
-				fmt.Printf(" <- bytes wrote %d %v\n", n, err)
 				j.Assert(err)
 			}
-			//ac.writeDoneChan <- n
+			// Sync with the writer
+			ac.writeDoneChan <- n
 			atomic.AddUint64(&ac.connManager.bytesSent, uint64(n))
 		}
 	}

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/AgentCoop/go-work"
 	"github.com/AgentCoop/go-work-tcpbalancer/internal/common/net"
-	"github.com/AgentCoop/go-work-tcpbalancer/internal/frontend"
+	"github.com/AgentCoop/go-work-tcpbalancer/internal/task/frontend"
 )
 
 func crunchNumbers(payload *frontend.CruncherPayload, ac *net.ActiveConn) {
