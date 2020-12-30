@@ -11,6 +11,7 @@ import (
 	"mime"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type ImageResizer struct {
@@ -46,9 +47,13 @@ func (s *ImageResizer) SaveResizedImageTask(j job.JobInterface) (job.Init, job.R
 	}
 	run := func(t *job.TaskInfo) {
 		//res := &imgresize.Response{}
+		//fmt.Printf("run resize\n")
 		ac := j.GetValue().(*net.ActiveConn)
 		select {
+		//case  <- t.GetDepChan():
+			//fmt.Printf("Got dep %v\n", dep)
 		case dataFrame := <-ac.GetOnDataFrameChan():
+			fmt.Printf("new frame %d saved %d found %d\n", len(dataFrame), s.savedCounter, s.foundCounter)
 			res := &imgresize.Response{}
 			buf := bytes.NewBuffer(dataFrame)
 			dec := gob.NewDecoder(buf)
@@ -62,11 +67,14 @@ func (s *ImageResizer) SaveResizedImageTask(j job.JobInterface) (job.Init, job.R
 			s.savedCounter++
 
 			// Finish job
-			if s.done && s.savedCounter >= s.foundCounter {
+			if s.savedCounter >= s.foundCounter {
 				fmt.Printf("Finish job\n")
-				//j.Cancel()
+				j.Finish()
 			}
+			//default:
+				//fmt.Printf("nope\n")
 		}
+		t.TickChan <- struct{}{}
 	}
 	return init, run, func() {
 		fmt.Println("cancel save")
@@ -79,6 +87,7 @@ func (s *ImageResizer) ScanForImagesTask(j job.JobInterface) (job.Init, job.Run,
 		t.SetResult(0) // scanned images counter
 	}
 	run := func(t *job.TaskInfo) {
+		fmt.Printf("run scan\n")
 		req := &imgresize.Request{}
 		req.TargetWidth = s.w
 		req.TargetHeight = s.h
@@ -105,6 +114,7 @@ func (s *ImageResizer) ScanForImagesTask(j job.JobInterface) (job.Init, job.Run,
 			ac.GetWriteChan() <- req
 			<-ac.GetWriteDoneChan()
 
+			time.Sleep(time.Second * 2)
 			s.foundCounter++
 			return nil
 		})

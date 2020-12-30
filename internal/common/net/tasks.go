@@ -5,6 +5,7 @@ import (
 	job "github.com/AgentCoop/go-work"
 	"net"
 	"sync/atomic"
+	"time"
 )
 
 func (c *connManager) ConnectTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
@@ -53,6 +54,7 @@ func (c *connManager) AcceptTask(j job.JobInterface) (job.Init, job.Run, job.Can
 
 func (c *connManager) WriteTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 	run := func(t *job.TaskInfo) {
+		//fmt.Printf("run write\n")
 		ac := j.GetValue().(*ActiveConn)
 		var n int
 		var err error
@@ -74,36 +76,43 @@ func (c *connManager) WriteTask(j job.JobInterface) (job.Init, job.Run, job.Canc
 			// Sync with the writer
 			ac.writeDoneChan <- n
 			atomic.AddUint64(&ac.connManager.bytesSent, uint64(n))
+		default:
 		}
+		t.TickChan <- struct{}{}
 	}
 	cancel := func()  {
-		fmt.Printf("Write Task finishes\n")
+		ac := j.GetValue().(*ActiveConn)
+		close(ac.writeChan)
+		close(ac.writeDoneChan)
 	}
 	return nil, run, cancel
 }
 
 func (c *connManager) ReadTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 	run := func(t *job.TaskInfo) {
+		fmt.Printf("run read\n")
 		ac := j.GetValue().(*ActiveConn)
-
 		n, err := ac.conn.Read(ac.readbuf)
-		fmt.Printf(" <- bytes read %d %v\n", n, err)
 		j.Assert(err)
+		fmt.Printf("done run read\n")
 
+		atomic.AddUint64(&ac.connManager.bytesReceived, uint64(n))
 		ac.df.append(ac.readbuf[0:n])
 
 		if ac.df.isFullFrame() {
+			fmt.Printf("send data frame\n")
 			ac.onDataFrameChan <- ac.df.getFrame()
 		} else if ! ac.df.isFrame() {
 			ac.onRawDataChan <- ac.df.flush()
 		}
+		time.Sleep(time.Millisecond * 100)
+		t.TickChan <- struct{}{}
 	}
 	cancel := func() {
 		ac := j.GetValue().(*ActiveConn)
 		cm := ac.connManager
 		atomic.AddInt32(&cm.outboundCounter, -1)
 		close(ac.readChan)
-		close(ac.writeChan)
 		close(ac.onDataFrameChan)
 		close(ac.onRawDataChan)
 		cm.delConn(ac)

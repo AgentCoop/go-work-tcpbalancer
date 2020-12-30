@@ -23,10 +23,11 @@ var ImgResizeOpts struct {
 	OutputDir string `long:"output" required:"true"`
 	Width uint `short:"w" required:"true"`
 	Height uint `short:"h" required:"true"`
+	nTimes int `long:"times"`
 }
 
 func newParser(data interface{}) *flags.Parser {
-	parser := flags.NewParser(&MainOptions, flags.PassDoubleDash | flags.PrintErrors | flags.IgnoreUnknown)
+	parser := flags.NewParser(data, flags.PassDoubleDash | flags.PrintErrors | flags.IgnoreUnknown)
 	return parser
 }
 
@@ -54,9 +55,10 @@ func ParseCliOptions() {
 			CruncherOpts.MaxItemsPerBatch = CruncherOpts.MinItemsPerBatch + 10
 		}
 	case "imgresize":
-		parser := flags.NewParser(&ImgResizeOpts, flags.PassDoubleDash | flags.PrintErrors)
+		parser := newParser(&ImgResizeOpts)
 		_, err := parser.ParseArgs(remOpts)
 		if err != nil { panic(err) }
+		if ImgResizeOpts.nTimes == 0 { ImgResizeOpts.nTimes = 1 }
 	default:
 		panic("invalid service name")
 	}

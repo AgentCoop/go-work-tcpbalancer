@@ -51,8 +51,10 @@ func ResizeImageTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 			payload := &r.Request{}
 			err := dec.Decode(payload)
 			j.Assert(err)
-			go resizeImage(j, payload, ac)
+			resizeImage(j, payload, ac)
+		default:
 		}
+		t.TickChan <- struct{}{}
 	}
 	return nil, run, func() {
 		fmt.Printf("Cancel resize job\n")

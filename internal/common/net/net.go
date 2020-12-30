@@ -11,14 +11,25 @@ func NewConnManager(network string, addr string) *connManager {
 	m.outboundConns = make(ActiveConnectionsMap)
 	m.newInbound = make(chan *Event, 100)
 	m.newOutbound = make(chan *Event, 100)
-	m.dataFrame = make(chan *Event, 100)
+	m.dataFrame = make(chan *Event)
 	m.outboundClosed = make(chan *Event)
+
+	//go func() {
+	//	for {
+	//		prevrecv := m.bytesReceived
+	//		select {
+	//		case <- time.Tick(time.Second):
+	//			m.bytesReceived
+	//		}
+	//	}
+	//}()
 
 	m.lisMap = make(listenAddrMap)
 	return m
 }
 
 func (m *connManager) NewActiveConn(conn n.Conn, typ ConnType) *ActiveConn {
+	//conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 	ac := &ActiveConn{conn: conn, typ: typ}
 	ac.eventMap = make(EventMap)
 	ac.eventMapMu = new(sync.Mutex)

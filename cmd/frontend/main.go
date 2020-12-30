@@ -42,21 +42,30 @@ func startCruncherClient(manager n.ConnManager) {
 	<-mainJob.Run()
 }
 
-func startImgResizerClient(manager n.ConnManager) {
+func resizeImages(manager n.ConnManager) {
 	imgResizer := frontend.NewImageResizer(ImgResizeOpts.ImgDir, ImgResizeOpts.OutputDir,
 		ImgResizeOpts.Width, ImgResizeOpts.Height)
 
-	mainJob := j.NewJob(nil)
-	mainJob.AddOneshotTask(manager.ConnectTask)
-	mainJob.AddTask(manager.ReadTask)
-	mainJob.AddTask(manager.WriteTask)
-	scannerTask := mainJob.AddTask(imgResizer.ScanForImagesTask)
-	saveImgTask := mainJob.AddTask(imgResizer.SaveResizedImageTask)
-	saveImgTask.DependsOn(scannerTask)
-	<-mainJob.Run()
+	for i := 0; i < 5; i++ {
+		mainJob := j.NewJob(nil)
+		mainJob.AddOneshotTask(manager.ConnectTask)
+		mainJob.AddTask(manager.ReadTask)
+		mainJob.AddTask(manager.WriteTask)
+		mainJob.AddTask(imgResizer.ScanForImagesTask)
+		mainJob.AddTask(imgResizer.SaveResizedImageTask)
+		<-mainJob.Run()
+
+		if mainJob.IsCancelled() {
+			fmt.Printf("job failed %s\n", mainJob.GetState())
+			os.Exit(-1)
+		}
+	}
+}
+
+func showNetStatistics(manager n.ConnManager) {
 	fmt.Printf("-- [ Network Statistics ] --\n")
-	fmt.Printf("\tbytes sent: %0.2f Mb\n", float64(manager.GetBytesSent() / 10e6))
-	fmt.Printf("\tbytes received: %0.2f Mb\n", float64(manager.GetBytesReceived()))
+	fmt.Printf("\tbytes sent: %0.2f Mb\n", float64(manager.GetBytesSent()) / 1e6)
+	fmt.Printf("\tbytes received: %0.2f Mb\n", float64(manager.GetBytesReceived()) / 1e6)
 }
 
 func main() {
@@ -74,6 +83,8 @@ func main() {
 	case "cruncher":
 		startCruncherClient(connManager)
 	case "imgresize":
-		startImgResizerClient(connManager)
+		resizeImages(connManager)
 	}
+
+	showNetStatistics(connManager)
 }
