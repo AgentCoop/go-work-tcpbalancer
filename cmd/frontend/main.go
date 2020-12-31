@@ -46,7 +46,7 @@ func resizeImages(manager n.ConnManager) {
 	imgResizer := frontend.NewImageResizer(ImgResizeOpts.ImgDir, ImgResizeOpts.OutputDir,
 		ImgResizeOpts.Width, ImgResizeOpts.Height)
 
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 1; i++ {
 		mainJob := j.NewJob(nil)
 		mainJob.AddOneshotTask(manager.ConnectTask)
 		mainJob.AddTask(manager.ReadTask)

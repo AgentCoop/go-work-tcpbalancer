@@ -11,7 +11,6 @@ import (
 	"mime"
 	"os"
 	"path/filepath"
-	"time"
 )
 
 type ImageResizer struct {
@@ -67,11 +66,12 @@ func (s *ImageResizer) SaveResizedImageTask(j job.JobInterface) (job.Init, job.R
 			s.savedCounter++
 
 			// Finish job
-			if s.savedCounter >= s.foundCounter {
+		default:
+			if s.done && s.savedCounter >= s.foundCounter {
 				fmt.Printf("Finish job\n")
+				t.Done()
 				j.Finish()
 			}
-			//default:
 				//fmt.Printf("nope\n")
 		}
 		t.TickChan <- struct{}{}
@@ -114,11 +114,12 @@ func (s *ImageResizer) ScanForImagesTask(j job.JobInterface) (job.Init, job.Run,
 			ac.GetWriteChan() <- req
 			<-ac.GetWriteDoneChan()
 
-			time.Sleep(time.Second * 2)
+			//time.Sleep(time.Second * 2)
 			s.foundCounter++
 			return nil
 		})
 		s.done = true
+		fmt.Printf("done scanner\n")
 		t.Done()
 	}
 	return init, run, func() {

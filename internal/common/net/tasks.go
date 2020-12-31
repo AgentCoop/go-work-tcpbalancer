@@ -5,7 +5,6 @@ import (
 	job "github.com/AgentCoop/go-work"
 	"net"
 	"sync/atomic"
-	"time"
 )
 
 func (c *connManager) ConnectTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
@@ -75,8 +74,10 @@ func (c *connManager) WriteTask(j job.JobInterface) (job.Init, job.Run, job.Canc
 			}
 			// Sync with the writer
 			ac.writeDoneChan <- n
+			fmt.Printf("Done write chan\n")
 			atomic.AddUint64(&ac.connManager.bytesSent, uint64(n))
-		default:
+		//default:
+			//t.TickChan <- struct{}{}
 		}
 		t.TickChan <- struct{}{}
 	}
@@ -94,7 +95,7 @@ func (c *connManager) ReadTask(j job.JobInterface) (job.Init, job.Run, job.Cance
 		ac := j.GetValue().(*ActiveConn)
 		n, err := ac.conn.Read(ac.readbuf)
 		j.Assert(err)
-		fmt.Printf("done run read\n")
+		fmt.Printf("done run read %d\n", n)
 
 		atomic.AddUint64(&ac.connManager.bytesReceived, uint64(n))
 		ac.df.append(ac.readbuf[0:n])
@@ -103,9 +104,12 @@ func (c *connManager) ReadTask(j job.JobInterface) (job.Init, job.Run, job.Cance
 			fmt.Printf("send data frame\n")
 			ac.onDataFrameChan <- ac.df.getFrame()
 		} else if ! ac.df.isFrame() {
+			fmt.Printf(" <--- something wrong\n")
 			ac.onRawDataChan <- ac.df.flush()
+		} else {
+			fmt.Printf(" <--- partial frame\n")
 		}
-		time.Sleep(time.Millisecond * 100)
+		//time.Sleep(time.Millisecond * 100)
 		t.TickChan <- struct{}{}
 	}
 	cancel := func() {
