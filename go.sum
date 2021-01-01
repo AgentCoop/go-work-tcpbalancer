@@ -1,9 +1,3 @@
-github.com/AgentCoop/go-work v0.0.0-20201221203215-7bcbc7431e62 h1:KXgRKJMoovg5anc1e5XA/2yT0xXpiM3UMQg25AR3y/E=
-github.com/AgentCoop/go-work v0.0.0-20201221203215-7bcbc7431e62/go.mod h1:isypi+prFXy84/Uo5B6CqtLJ0LBkAr1/85aPjPC+J7U=
-github.com/AgentCoop/go-work v0.0.0-20201222093409-5d1a54fb8374 h1:xB8OUYLbpGAWxjwR8btpBC0AQwXUmvoThudSo6mJR/s=
-github.com/AgentCoop/go-work v0.0.0-20201222093409-5d1a54fb8374/go.mod h1:isypi+prFXy84/Uo5B6CqtLJ0LBkAr1/85aPjPC+J7U=
-github.com/AgentCoop/go-work v0.0.0-20201223134846-8aecd645426e h1:xqwlbNTB2pqK+u8PKEeA3iQKZdrhudzlVjOVVGwbyk0=
-github.com/AgentCoop/go-work v0.0.0-20201223134846-8aecd645426e/go.mod h1:isypi+prFXy84/Uo5B6CqtLJ0LBkAr1/85aPjPC+J7U=
 github.com/jessevdk/go-flags v1.4.0 h1:4IU2WS7AumrZ/40jfhf4QVDMsQwqA7VEHozFRrGARJA=
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
 github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 h1:zYyBkD/k9seD2A7fsi6Oo2LfFZAehjjQMERAvZLEDnQ=

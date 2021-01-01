@@ -61,25 +61,27 @@ func (c *connManager) WriteTask(j job.JobInterface) (job.Init, job.Run, job.Canc
 		case data := <- ac.writeChan:
 			switch data.(type) {
 			case []byte: // raw data
+				fmt.Printf(" !!!!!!!!!! trying to send raw data\n")
 				n, err = ac.conn.Write(data.([]byte))
 				j.Assert(err)
 			case nil:
 				fmt.Printf("NIL DATA")
 				// Handle error
 			default:
-				enc, err := ac.df.toFrame(data)
+				enc, err := ac.df.ToFrame(data)
 				j.Assert(err)
+				fmt.Printf("   -> write %d\n", len(enc))
 				n, err = ac.conn.Write(enc)
 				j.Assert(err)
 			}
 			// Sync with the writer
 			ac.writeDoneChan <- n
-			fmt.Printf("Done write chan\n")
+			fmt.Printf(" -> done write chan %d\n", n)
 			atomic.AddUint64(&ac.connManager.bytesSent, uint64(n))
 		//default:
 			//t.TickChan <- struct{}{}
 		}
-		t.TickChan <- struct{}{}
+		t.Tick()
 	}
 	cancel := func()  {
 		ac := j.GetValue().(*ActiveConn)
@@ -91,26 +93,25 @@ func (c *connManager) WriteTask(j job.JobInterface) (job.Init, job.Run, job.Canc
 
 func (c *connManager) ReadTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 	run := func(t *job.TaskInfo) {
-		fmt.Printf("run read\n")
 		ac := j.GetValue().(*ActiveConn)
 		n, err := ac.conn.Read(ac.readbuf)
 		j.Assert(err)
-		fmt.Printf("done run read %d\n", n)
 
 		atomic.AddUint64(&ac.connManager.bytesReceived, uint64(n))
-		ac.df.append(ac.readbuf[0:n])
+		fmt.Printf(" -> raw data %d\n", n)
+		ac.df.Capture(ac.readbuf[0:n])
 
-		if ac.df.isFullFrame() {
-			fmt.Printf("send data frame\n")
-			ac.onDataFrameChan <- ac.df.getFrame()
-		} else if ! ac.df.isFrame() {
-			fmt.Printf(" <--- something wrong\n")
-			ac.onRawDataChan <- ac.df.flush()
+		if ac.df.IsFullFrame() {
+			f := ac.df.GetFrame()
+			fmt.Printf(" -> got frame %d\n", len(f))
+			ac.onDataFrameChan <- f
+			<-ac.OnDataFrameDoneChan
 		} else {
 			fmt.Printf(" <--- partial frame\n")
 		}
+		//ac.readbuf = ac.readbuf[:0]
 		//time.Sleep(time.Millisecond * 100)
-		t.TickChan <- struct{}{}
+		t.Tick()
 	}
 	cancel := func() {
 		ac := j.GetValue().(*ActiveConn)

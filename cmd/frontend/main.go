@@ -5,10 +5,11 @@ import (
 	"fmt"
 	j "github.com/AgentCoop/go-work"
 	n "github.com/AgentCoop/go-work-tcpbalancer/internal/common/net"
-//	"github.com/AgentCoop/go-work-tcpbalancer/internal/frontend/task"
+	_ "net/http/pprof"
+	//	"github.com/AgentCoop/go-work-tcpbalancer/internal/frontend/task"
 	"github.com/AgentCoop/go-work-tcpbalancer/internal/task/frontend"
 	"os"
-//	"time"
+	//	"time"
 )
 
 func connToProxy(connManager n.ConnManager) {
@@ -43,10 +44,10 @@ func startCruncherClient(manager n.ConnManager) {
 }
 
 func resizeImages(manager n.ConnManager) {
-	imgResizer := frontend.NewImageResizer(ImgResizeOpts.ImgDir, ImgResizeOpts.OutputDir,
-		ImgResizeOpts.Width, ImgResizeOpts.Height)
+	for i := 0; i < ImgResizeOpts.Times; i++ {
+		imgResizer := frontend.NewImageResizer(ImgResizeOpts.ImgDir, ImgResizeOpts.OutputDir,
+			ImgResizeOpts.Width, ImgResizeOpts.Height)
 
-	for i := 0; i < 1; i++ {
 		mainJob := j.NewJob(nil)
 		mainJob.AddOneshotTask(manager.ConnectTask)
 		mainJob.AddTask(manager.ReadTask)
@@ -78,6 +79,10 @@ func main() {
 
 	gob.Register(&frontend.CruncherPayload{})
 	connManager := n.NewConnManager("tcp4", MainOptions.ProxyHost)
+
+	//go func() {
+	//	log.Println(http.ListenAndServe("localhost:6060", nil))
+	//}()
 
 	switch MainOptions.Service {
 	case "cruncher":

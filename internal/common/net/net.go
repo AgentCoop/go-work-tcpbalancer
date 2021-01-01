@@ -1,6 +1,7 @@
 package net
 
 import (
+	netdataframe "github.com/AgentCoop/net-dataframe"
 	n "net"
 	"sync"
 )
@@ -42,10 +43,11 @@ func (m *connManager) NewActiveConn(conn n.Conn, typ ConnType) *ActiveConn {
 	ac.onNewConnChan = make(chan struct{}, 1)
 	ac.onConnCloseChan = make(chan struct{}, 1)
 	ac.onDataFrameChan = make(chan []byte)
+	ac.OnDataFrameDoneChan = make(chan struct{})
 	ac.onRawDataChan = make(chan []byte)
 
 	ac.connManager = m
-	ac.df = NewDataFrame()
+	ac.df = netdataframe.NewDataFrame()
 	ac.readbuf = make([]byte, StreamReadBufferSize)
 	return ac
 }

@@ -23,7 +23,7 @@ var ImgResizeOpts struct {
 	OutputDir string `long:"output" required:"true"`
 	Width uint `short:"w" required:"true"`
 	Height uint `short:"h" required:"true"`
-	nTimes int `long:"times"`
+	Times int `long:"times"`
 }
 
 func newParser(data interface{}) *flags.Parser {
@@ -58,7 +58,7 @@ func ParseCliOptions() {
 		parser := newParser(&ImgResizeOpts)
 		_, err := parser.ParseArgs(remOpts)
 		if err != nil { panic(err) }
-		if ImgResizeOpts.nTimes == 0 { ImgResizeOpts.nTimes = 1 }
+		if ImgResizeOpts.Times == 0 { ImgResizeOpts.Times = 1 }
 	default:
 		panic("invalid service name")
 	}

@@ -52,9 +52,10 @@ func ResizeImageTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 			err := dec.Decode(payload)
 			j.Assert(err)
 			resizeImage(j, payload, ac)
+			ac.OnDataFrameDoneChan <- struct{}{}
 		default:
 		}
-		t.TickChan <- struct{}{}
+		t.Tick()
 	}
 	return nil, run, func() {
 		fmt.Printf("Cancel resize job\n")

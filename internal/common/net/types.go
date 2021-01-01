@@ -2,6 +2,7 @@ package net
 
 import (
 	job "github.com/AgentCoop/go-work"
+	"github.com/AgentCoop/net-dataframe"
 	n "net"
 	"sync"
 )
@@ -59,8 +60,6 @@ const (
 	StreamReadBufferSize = 2_000_000
 )
 
-var dataFrameMagicWord = [...]byte{ 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88 }
-
 type Request struct {
 	Size uint64
 	Body interface{}
@@ -71,10 +70,14 @@ type ActiveConn struct {
 
 	writeChan chan interface{}
 	writeDoneChan chan int
+
 	readChan chan interface{}
 	onNewConnChan chan struct{}
 	onConnCloseChan chan struct{}
+
 	onDataFrameChan chan []byte
+	OnDataFrameDoneChan chan struct{}
+
 	onRawDataChan chan []byte
 
 	connManager *connManager
@@ -83,7 +86,7 @@ type ActiveConn struct {
 	typ ConnType
 	eventMapMu	*sync.Mutex
 	eventMap EventMap
-	df *dataFrame
+	df *netdataframe.DataFrame
 	readbuf []byte
 
 	value   interface{}

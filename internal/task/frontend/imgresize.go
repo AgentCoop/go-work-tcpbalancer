@@ -59,11 +59,12 @@ func (s *ImageResizer) SaveResizedImageTask(j job.JobInterface) (job.Init, job.R
 			err := dec.Decode(res)
 			j.Assert(err)
 
-			baseName := fmt.Sprintf("%s-%dx%d.%s",
+			baseName := fmt.Sprintf("%s-%dx%d%s",
 				res.OriginalName, res.ResizedWidth, res.ResizedHeight, res.Typ.ToFileExt())
 			filename := s.outputDir + string(os.PathSeparator) + baseName
-			ioutil.WriteFile(filename, res.ImgData, 775)
+			ioutil.WriteFile(filename, res.ImgData, 0775)
 			s.savedCounter++
+			ac.OnDataFrameDoneChan <- struct{}{}
 
 			// Finish job
 		default:
@@ -74,7 +75,7 @@ func (s *ImageResizer) SaveResizedImageTask(j job.JobInterface) (job.Init, job.R
 			}
 				//fmt.Printf("nope\n")
 		}
-		t.TickChan <- struct{}{}
+		t.Tick()
 	}
 	return init, run, func() {
 		fmt.Println("cancel save")
@@ -87,7 +88,6 @@ func (s *ImageResizer) ScanForImagesTask(j job.JobInterface) (job.Init, job.Run,
 		t.SetResult(0) // scanned images counter
 	}
 	run := func(t *job.TaskInfo) {
-		fmt.Printf("run scan\n")
 		req := &imgresize.Request{}
 		req.TargetWidth = s.w
 		req.TargetHeight = s.h
@@ -114,15 +114,12 @@ func (s *ImageResizer) ScanForImagesTask(j job.JobInterface) (job.Init, job.Run,
 			ac.GetWriteChan() <- req
 			<-ac.GetWriteDoneChan()
 
-			//time.Sleep(time.Second * 2)
+			//time.Sleep(time.Millisecond * 450)
 			s.foundCounter++
 			return nil
 		})
 		s.done = true
-		fmt.Printf("done scanner\n")
 		t.Done()
 	}
-	return init, run, func() {
-		fmt.Println("cancel scanner")
-	}
+	return init, run, func() { }
 }
