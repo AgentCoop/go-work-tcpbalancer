@@ -68,6 +68,7 @@ func showNetStatistics(manager n.ConnManager) {
 	fmt.Printf("\tbytes sent: %0.2f Mb\n", float64(manager.GetBytesSent()) / 1e6)
 	fmt.Printf("\tbytes received: %0.2f Mb\n", float64(manager.GetBytesReceived()) / 1e6)
 }
+var counter int
 
 func main() {
 	ParseCliOptions()
@@ -79,6 +80,18 @@ func main() {
 
 	gob.Register(&frontend.CruncherPayload{})
 	connManager := n.NewConnManager("tcp4", MainOptions.ProxyHost)
+
+	j.DefaultLogLevel = MainOptions.LogLevel
+	j.RegisterDefaultLogger(func() j.LogLevelMap {
+		m := make(j.LogLevelMap)
+		handler := func(record interface{}) {
+			fmt.Printf("%s\n", record.(string))
+			counter++
+		}
+		m[1] = j.NewLogLevelMapItem(make(chan interface{}), handler)
+		m[2] = j.NewLogLevelMapItem(make(chan interface{}), handler)
+		return m
+	})
 
 	//go func() {
 	//	log.Println(http.ListenAndServe("localhost:6060", nil))

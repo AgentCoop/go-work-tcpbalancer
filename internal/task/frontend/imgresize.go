@@ -45,14 +45,9 @@ func (s *ImageResizer) SaveResizedImageTask(j job.JobInterface) (job.Init, job.R
 		}
 	}
 	run := func(t *job.TaskInfo) {
-		//res := &imgresize.Response{}
-		//fmt.Printf("run resize\n")
 		ac := j.GetValue().(*net.ActiveConn)
 		select {
-		//case  <- t.GetDepChan():
-			//fmt.Printf("Got dep %v\n", dep)
 		case dataFrame := <-ac.GetOnDataFrameChan():
-			fmt.Printf("new frame %d saved %d found %d\n", len(dataFrame), s.savedCounter, s.foundCounter)
 			res := &imgresize.Response{}
 			buf := bytes.NewBuffer(dataFrame)
 			dec := gob.NewDecoder(buf)
@@ -64,22 +59,19 @@ func (s *ImageResizer) SaveResizedImageTask(j job.JobInterface) (job.Init, job.R
 			filename := s.outputDir + string(os.PathSeparator) + baseName
 			ioutil.WriteFile(filename, res.ImgData, 0775)
 			s.savedCounter++
-			ac.OnDataFrameDoneChan <- struct{}{}
 
-			// Finish job
+			ac.OnDataFrameDoneChan <- struct{}{}
+			j.Log(1) <- fmt.Sprintf("[ save-task ]: file %s has been saved\n", filename)
 		default:
+			// Finish job
 			if s.done && s.savedCounter >= s.foundCounter {
-				fmt.Printf("Finish job\n")
 				t.Done()
 				j.Finish()
 			}
-				//fmt.Printf("nope\n")
 		}
 		t.Tick()
 	}
-	return init, run, func() {
-		fmt.Println("cancel save")
-	}
+	return init, run, nil
 }
 
 // Scans the given directory for images to resize.
@@ -106,7 +98,6 @@ func (s *ImageResizer) ScanForImagesTask(j job.JobInterface) (job.Init, job.Run,
 				return nil
 			}
 
-			fmt.Printf("file %s %v\n", path, err)
 			data, err := ioutil.ReadFile(path)
 			j.Assert(err)
 			req.ImgData = data
@@ -114,8 +105,8 @@ func (s *ImageResizer) ScanForImagesTask(j job.JobInterface) (job.Init, job.Run,
 			ac.GetWriteChan() <- req
 			<-ac.GetWriteDoneChan()
 
-			//time.Sleep(time.Millisecond * 450)
 			s.foundCounter++
+			j.Log(1) <- fmt.Sprintf("[ scanner-task ]: image file %s dispatched for resizing\n", path)
 			return nil
 		})
 		s.done = true

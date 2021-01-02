@@ -8,6 +8,7 @@ import (
 var MainOptions struct {
 	ProxyHost string `long:"proxy" required:"true"`
 	Service string `long:"service" required:"true"`
+	LogLevel int `long:"loglevel"`
 }
 
 var CruncherOpts struct {

@@ -61,25 +61,21 @@ func (c *connManager) WriteTask(j job.JobInterface) (job.Init, job.Run, job.Canc
 		case data := <- ac.writeChan:
 			switch data.(type) {
 			case []byte: // raw data
-				fmt.Printf(" !!!!!!!!!! trying to send raw data\n")
 				n, err = ac.conn.Write(data.([]byte))
 				j.Assert(err)
 			case nil:
-				fmt.Printf("NIL DATA")
+				j.Log(2) <- fmt.Sprintf(" -> nil data")
 				// Handle error
 			default:
 				enc, err := ac.df.ToFrame(data)
 				j.Assert(err)
-				fmt.Printf("   -> write %d\n", len(enc))
 				n, err = ac.conn.Write(enc)
 				j.Assert(err)
 			}
 			// Sync with the writer
 			ac.writeDoneChan <- n
-			fmt.Printf(" -> done write chan %d\n", n)
+			j.Log(2) <- fmt.Sprintf(" -> bytes %d wrote", n)
 			atomic.AddUint64(&ac.connManager.bytesSent, uint64(n))
-		//default:
-			//t.TickChan <- struct{}{}
 		}
 		t.Tick()
 	}
@@ -96,21 +92,15 @@ func (c *connManager) ReadTask(j job.JobInterface) (job.Init, job.Run, job.Cance
 		ac := j.GetValue().(*ActiveConn)
 		n, err := ac.conn.Read(ac.readbuf)
 		j.Assert(err)
-
 		atomic.AddUint64(&ac.connManager.bytesReceived, uint64(n))
-		fmt.Printf(" -> raw data %d\n", n)
 		ac.df.Capture(ac.readbuf[0:n])
 
 		if ac.df.IsFullFrame() {
 			f := ac.df.GetFrame()
-			fmt.Printf(" -> got frame %d\n", len(f))
 			ac.onDataFrameChan <- f
 			<-ac.OnDataFrameDoneChan
-		} else {
-			fmt.Printf(" <--- partial frame\n")
 		}
-		//ac.readbuf = ac.readbuf[:0]
-		//time.Sleep(time.Millisecond * 100)
+
 		t.Tick()
 	}
 	cancel := func() {
