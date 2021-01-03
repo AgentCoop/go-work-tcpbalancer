@@ -9,6 +9,7 @@ var CliOptions struct {
 	Port int `long:"port" short:"p"`
 	Service string `long:"service"`
 	Name string `long:"name" required:"true" description:"Server name"`
+	CpuProfile string `long:"cpuprofile"`
 }
 
 func ParseCliOptions() {

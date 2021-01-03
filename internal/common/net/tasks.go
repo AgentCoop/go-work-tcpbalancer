@@ -10,7 +10,7 @@ import (
 func (c *connManager) ConnectTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 	run := func(t *job.TaskInfo) {
 		conn, err := net.Dial(c.network, c.addr)
-		j.Assert(err)
+		t.Assert(err)
 		ac := c.NewActiveConn(conn, Outbound)
 		j.SetValue(ac)
 		c.addConn(ac)
@@ -28,13 +28,13 @@ func (c *connManager) AcceptTask(j job.JobInterface) (job.Init, job.Run, job.Can
 		if _, ok := c.lisMap[key]; ! ok {
 			l, err := net.Listen(c.network, c.addr)
 			c.lisMap[key] = l
-			j.Assert(err)
+			t.Assert(err)
 			lis = l
 		}
 		lis = c.lisMap[key]
 
 		conn, acceptErr := lis.Accept()
-		j.Assert(acceptErr)
+		t.Assert(acceptErr)
 
 		atomic.AddInt32(&c.inboundCounter, 1)
 		//pconn.SetDeadline(time.Now().Add(6 * time.Second))
@@ -62,15 +62,15 @@ func (c *connManager) WriteTask(j job.JobInterface) (job.Init, job.Run, job.Canc
 			switch data.(type) {
 			case []byte: // raw data
 				n, err = ac.conn.Write(data.([]byte))
-				j.Assert(err)
+				t.Assert(err)
 			case nil:
 				j.Log(2) <- fmt.Sprintf(" -> nil data")
 				// Handle error
 			default:
 				enc, err := ac.df.ToFrame(data)
-				j.Assert(err)
+				t.Assert(err)
 				n, err = ac.conn.Write(enc)
-				j.Assert(err)
+				t.Assert(err)
 			}
 			// Sync with the writer
 			ac.writeDoneChan <- n
@@ -83,6 +83,7 @@ func (c *connManager) WriteTask(j job.JobInterface) (job.Init, job.Run, job.Canc
 		ac := j.GetValue().(*ActiveConn)
 		close(ac.writeChan)
 		close(ac.writeDoneChan)
+		ac.conn.Close()
 	}
 	return nil, run, cancel
 }
@@ -91,7 +92,7 @@ func (c *connManager) ReadTask(j job.JobInterface) (job.Init, job.Run, job.Cance
 	run := func(t *job.TaskInfo) {
 		ac := j.GetValue().(*ActiveConn)
 		n, err := ac.conn.Read(ac.readbuf)
-		j.Assert(err)
+		t.Assert(err)
 		atomic.AddUint64(&ac.connManager.bytesReceived, uint64(n))
 		ac.df.Capture(ac.readbuf[0:n])
 
@@ -111,6 +112,7 @@ func (c *connManager) ReadTask(j job.JobInterface) (job.Init, job.Run, job.Cance
 		close(ac.onDataFrameChan)
 		close(ac.onRawDataChan)
 		cm.delConn(ac)
+		ac.conn.Close()
 	}
 	return nil, run, cancel
 }

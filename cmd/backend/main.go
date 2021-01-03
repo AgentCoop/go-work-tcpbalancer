@@ -6,7 +6,12 @@ import (
 	"github.com/AgentCoop/go-work-tcpbalancer/internal/backend"
 	"github.com/AgentCoop/go-work-tcpbalancer/internal/backend/task"
 	n "github.com/AgentCoop/go-work-tcpbalancer/internal/common/net"
+	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
+	"runtime"
+	"runtime/pprof"
 	"strconv"
 	"time"
 )
@@ -39,11 +44,31 @@ func startImgServer(connManager n.ConnManager) {
 		mainJob.AddTask(connManager.WriteTask)
 		mainJob.AddTask(task.ResizeImageTask)
 		<-mainJob.RunInBackground()
+		go func() {
+			for {
+				select {
+				case <-mainJob.GetDoneChan():
+					fmt.Printf("Job done\n")
+					return
+				}
+			}
+		}()
+		fmt.Printf("num goroutines %d\n", runtime.NumGoroutine())
 	}
 }
 
 func main() {
 	backend.ParseCliOptions()
+
+	if backend.CliOptions.CpuProfile != "" {
+		fmt.Println(backend.CliOptions.CpuProfile)
+		f, err := os.Create(backend.CliOptions.CpuProfile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
 
 	if backend.CliOptions.Port == 0 {
 		fmt.Printf("Specify a TCP port to listen on\n")
@@ -62,6 +87,10 @@ func main() {
 		fmt.Printf("💻 [ %s:img ] is listening on port %d\n",
 			backend.CliOptions.Name, backend.CliOptions.Port)
 	}
+
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6061", nil))
+	}()
 
 	for {
 		time.Sleep(time.Second)

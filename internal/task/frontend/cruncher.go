@@ -94,7 +94,7 @@ func (c *Cruncher) SquareNumsInBatchTask(j job.JobInterface) (job.Init, job.Run,
 			dec := gob.NewDecoder(buf)
 			nums := &CruncherResult{}
 			err := dec.Decode(nums)
-			j.Assert(err)
+			t.Assert(err)
 
 			//fmt.Printf("Got crunched numbers for batch #%d, %d\n", nums.BatchNum, len(nums.SquaredNums))
 
@@ -118,7 +118,7 @@ func (c *Cruncher) SquareNumsInBatchTask(j job.JobInterface) (job.Init, job.Run,
 			ac.ValueMu.Lock()
 			for i := 0; i < batch.ItemsCount; i++ {
 				if uint64(batch.Items[i] * batch.Items[i]) != nums.SquaredNums[i] {
-					j.Assert(errors.New("Batch processing failed"))
+					t.Assert(errors.New("Batch processing failed"))
 				}
 				delete(batchMap, nums.BatchNum)
 			}

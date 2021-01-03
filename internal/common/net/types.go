@@ -57,7 +57,7 @@ type ConnManager interface {
 }
 
 const (
-	StreamReadBufferSize = 2_000_000
+	StreamReadBufferSize = 4096
 )
 
 type Request struct {

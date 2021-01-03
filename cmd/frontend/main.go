@@ -5,7 +5,11 @@ import (
 	"fmt"
 	j "github.com/AgentCoop/go-work"
 	n "github.com/AgentCoop/go-work-tcpbalancer/internal/common/net"
+	"log"
+	"net/http"
 	_ "net/http/pprof"
+	"runtime"
+
 	//	"github.com/AgentCoop/go-work-tcpbalancer/internal/frontend/task"
 	"github.com/AgentCoop/go-work-tcpbalancer/internal/task/frontend"
 	"os"
@@ -56,6 +60,8 @@ func resizeImages(manager n.ConnManager) {
 		mainJob.AddTask(imgResizer.SaveResizedImageTask)
 		<-mainJob.Run()
 
+		counter++
+		fmt.Printf("run %d\n", counter)
 		if mainJob.IsCancelled() {
 			fmt.Printf("job failed %s\n", mainJob.GetState())
 			os.Exit(-1)
@@ -86,16 +92,16 @@ func main() {
 		m := make(j.LogLevelMap)
 		handler := func(record interface{}) {
 			fmt.Printf("%s\n", record.(string))
-			counter++
 		}
 		m[1] = j.NewLogLevelMapItem(make(chan interface{}), handler)
 		m[2] = j.NewLogLevelMapItem(make(chan interface{}), handler)
 		return m
 	})
 
-	//go func() {
-	//	log.Println(http.ListenAndServe("localhost:6060", nil))
-	//}()
+	runtime.SetBlockProfileRate(6)
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 
 	switch MainOptions.Service {
 	case "cruncher":

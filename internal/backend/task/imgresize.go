@@ -13,11 +13,11 @@ import (
 	"image/png"
 )
 
-func resizeImage(j job.JobInterface, req *r.Request, ac *net.ActiveConn) {
+func resizeImage(t *job.TaskInfo, req *r.Request, ac *net.ActiveConn) {
 	result := &r.Response{}
 	buf := bytes.NewBuffer(req.ImgData)
 	img, _, err := image.Decode(buf)
-	j.Assert(err)
+	t.Assert(err)
 
 	m := resize.Resize(req.TargetWidth, req.TargetHeight, img, resize.Lanczos3)
 	switch req.Typ {
@@ -33,10 +33,8 @@ func resizeImage(j job.JobInterface, req *r.Request, ac *net.ActiveConn) {
 	result.ResizedWidth = req.TargetWidth
 	result.ResizedHeight = req.TargetHeight
 
-	fmt.Printf("write to chan\n")
 	ac.GetWriteChan() <- result
-	n := <-ac.GetWriteDoneChan()
-	fmt.Printf("done write %d\n", n)
+	<-ac.GetWriteDoneChan()
 }
 
 func ResizeImageTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
@@ -50,14 +48,12 @@ func ResizeImageTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 			dec := gob.NewDecoder(buf)
 			payload := &r.Request{}
 			err := dec.Decode(payload)
-			j.Assert(err)
-			resizeImage(j, payload, ac)
+			t.Assert(err)
+			resizeImage(t, payload, ac)
 			ac.OnDataFrameDoneChan <- struct{}{}
 		default:
 		}
 		t.Tick()
 	}
-	return nil, run, func() {
-		fmt.Printf("Cancel resize job\n")
-	}
+	return nil, run, func() { }
 }

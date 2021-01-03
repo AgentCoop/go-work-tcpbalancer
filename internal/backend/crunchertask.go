@@ -35,7 +35,7 @@ func CruncherTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 				payload := &frontend.CruncherPayload{}
 				err := dec.Decode(payload)
 				fmt.Printf(" <- new numbers to crunch %d\n", payload.ItemsCount)
-				j.Assert(err)
+				t.Assert(err)
 				go crunchNumbers(payload, ac)
 			}
 		}

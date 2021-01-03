@@ -37,11 +37,11 @@ func NewImageResizer(input string, output string, w uint, h uint) *ImageResizer 
 func (s *ImageResizer) SaveResizedImageTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 	init := func(t *job.TaskInfo) {
 		if _, err := os.Stat(s.inputDir); os.IsNotExist(err) {
-			j.Assert(err)
+			t.Assert(err)
 		}
 		if _, err := os.Stat(s.outputDir); os.IsNotExist(err) {
 			err := os.Mkdir(s.outputDir, 755)
-			j.Assert(err)
+			t.Assert(err)
 		}
 	}
 	run := func(t *job.TaskInfo) {
@@ -52,7 +52,7 @@ func (s *ImageResizer) SaveResizedImageTask(j job.JobInterface) (job.Init, job.R
 			buf := bytes.NewBuffer(dataFrame)
 			dec := gob.NewDecoder(buf)
 			err := dec.Decode(res)
-			j.Assert(err)
+			t.Assert(err)
 
 			baseName := fmt.Sprintf("%s-%dx%d%s",
 				res.OriginalName, res.ResizedWidth, res.ResizedHeight, res.Typ.ToFileExt())
@@ -61,6 +61,7 @@ func (s *ImageResizer) SaveResizedImageTask(j job.JobInterface) (job.Init, job.R
 			s.savedCounter++
 
 			ac.OnDataFrameDoneChan <- struct{}{}
+			//fmt.Printf("[ save-task ]: file %s has been saved\n", filename)
 			j.Log(1) <- fmt.Sprintf("[ save-task ]: file %s has been saved\n", filename)
 		default:
 			// Finish job
@@ -84,7 +85,7 @@ func (s *ImageResizer) ScanForImagesTask(j job.JobInterface) (job.Init, job.Run,
 		req.TargetWidth = s.w
 		req.TargetHeight = s.h
 		filepath.Walk(s.inputDir, func(path string, info os.FileInfo, err error) error {
-			j.Assert(err)
+			t.Assert(err)
 			ac := j.GetValue().(*net.ActiveConn)
 
 			req.OriginalName = info.Name()
@@ -99,7 +100,7 @@ func (s *ImageResizer) ScanForImagesTask(j job.JobInterface) (job.Init, job.Run,
 			}
 
 			data, err := ioutil.ReadFile(path)
-			j.Assert(err)
+			t.Assert(err)
 			req.ImgData = data
 
 			ac.GetWriteChan() <- req
