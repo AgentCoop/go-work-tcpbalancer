@@ -86,7 +86,7 @@ type ActiveConn struct {
 	typ ConnType
 	eventMapMu	*sync.Mutex
 	eventMap EventMap
-	df *netdataframe.DataFrame
+	df netdataframe.DataFrame
 	readbuf []byte
 
 	value   interface{}

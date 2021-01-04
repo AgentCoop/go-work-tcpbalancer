@@ -1,19 +1,17 @@
-package task
+package backend
 
 import (
 	"bytes"
-	"encoding/gob"
-	"fmt"
 	"github.com/AgentCoop/go-work"
 	r "github.com/AgentCoop/go-work-tcpbalancer/internal/common/imgresize"
-	net "github.com/AgentCoop/go-work-tcpbalancer/internal/common/net"
+	"github.com/AgentCoop/net-manager"
 	"github.com/nfnt/resize"
 	"image"
 	"image/jpeg"
 	"image/png"
 )
 
-func resizeImage(t *job.TaskInfo, req *r.Request, ac *net.ActiveConn) {
+func resizeImage(t *job.TaskInfo, req *r.Request, stream netmanager.StreamConn) {
 	result := &r.Response{}
 	buf := bytes.NewBuffer(req.ImgData)
 	img, _, err := image.Decode(buf)
@@ -33,27 +31,24 @@ func resizeImage(t *job.TaskInfo, req *r.Request, ac *net.ActiveConn) {
 	result.ResizedWidth = req.TargetWidth
 	result.ResizedHeight = req.TargetHeight
 
-	ac.GetWriteChan() <- result
-	<-ac.GetWriteDoneChan()
+	stream.Write() <- result
+	stream.WriteSync()
 }
 
 func ResizeImageTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
-	run := func(t *job.TaskInfo) {
-		ac := j.GetValue().(*net.ActiveConn)
+	run := func(task *job.TaskInfo) {
+		stream := j.GetValue().(netmanager.StreamConn)
 		select {
-		case <-ac.GetOnNewConnChan():
-		case frame := <-ac.GetOnDataFrameChan():
-			fmt.Printf("new frame %d bytes\n", len(frame))
-			buf := bytes.NewBuffer(frame)
-			dec := gob.NewDecoder(buf)
+		case frame := <-stream.RecvDataFrame():
 			payload := &r.Request{}
-			err := dec.Decode(payload)
-			t.Assert(err)
-			resizeImage(t, payload, ac)
-			ac.OnDataFrameDoneChan <- struct{}{}
+			err := frame.Decode(payload)
+			task.Assert(err)
+
+			resizeImage(task, payload, stream)
+			stream.RecvDataFrameSync()
 		default:
 		}
-		t.Tick()
+		task.Tick()
 	}
 	return nil, run, func() { }
 }

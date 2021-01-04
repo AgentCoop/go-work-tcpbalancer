@@ -5,6 +5,7 @@ import (
 	"fmt"
 	j "github.com/AgentCoop/go-work"
 	n "github.com/AgentCoop/go-work-tcpbalancer/internal/common/net"
+	"github.com/AgentCoop/net-manager"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -16,46 +17,27 @@ import (
 	//	"time"
 )
 
-func connToProxy(connManager n.ConnManager) {
-	//mainJob := j.NewJob(connManager)
-	////mainJob.WithPrerequisites(connManager.Connect(mainJob))
-	//time.Sleep(time.Millisecond)
-	//mainJob.AddOneshotTask(connManager.ConnectTask)
-	//mainJob.AddTask(connManager.ReadTask)
-	//mainJob.AddTask(connManager.WriteTask)
-	//mainJob.AddTask(frontend.SquareNumsInBatchTask)
-	//fmt.Printf("Wait for run\n")
-	//<-mainJob.Run()
-	//fmt.Printf("Done\n")
-	//go func(){
-	//	select {
-	//	case err := <- mainJob.GetError():
-	//		fmt.Printf("err %s\n", err)
-	//	}
-	//}()
-}
-
-func startCruncherClient(manager n.ConnManager) {
+func startCruncherClient(mngr netmanager.ConnManager) {
 	cruncher := frontend.NewCruncher(CruncherOpts.MinBatchesPerConn, CruncherOpts.MaxBatchesPerConn,
 		CruncherOpts.MinItemsPerBatch, CruncherOpts.MaxBatchesPerConn)
 
 	mainJob := j.NewJob(nil)
-	mainJob.AddOneshotTask(manager.ConnectTask)
-	mainJob.AddTask(manager.ReadTask)
-	mainJob.AddTask(manager.WriteTask)
+	mainJob.AddOneshotTask(mngr.ConnectTask)
+	mainJob.AddTask(mngr.ReadTask)
+	mainJob.AddTask(mngr.WriteTask)
 	mainJob.AddTask(cruncher.SquareNumsInBatchTask)
 	<-mainJob.Run()
 }
 
-func resizeImages(manager n.ConnManager) {
+func resizeImages(mngr netmanager.ConnManager) {
 	for i := 0; i < ImgResizeOpts.Times; i++ {
 		imgResizer := frontend.NewImageResizer(ImgResizeOpts.ImgDir, ImgResizeOpts.OutputDir,
 			ImgResizeOpts.Width, ImgResizeOpts.Height)
 
 		mainJob := j.NewJob(nil)
-		mainJob.AddOneshotTask(manager.ConnectTask)
-		mainJob.AddTask(manager.ReadTask)
-		mainJob.AddTask(manager.WriteTask)
+		mainJob.AddOneshotTask(mngr.ConnectTask)
+		mainJob.AddTask(mngr.ReadTask)
+		mainJob.AddTask(mngr.WriteTask)
 		mainJob.AddTask(imgResizer.ScanForImagesTask)
 		mainJob.AddTask(imgResizer.SaveResizedImageTask)
 		<-mainJob.Run()
@@ -85,7 +67,8 @@ func main() {
 	}
 
 	gob.Register(&frontend.CruncherPayload{})
-	connManager := n.NewConnManager("tcp4", MainOptions.ProxyHost)
+	netMngr := netmanager.NewNetworkManager()
+	connMngr := netMngr.NewConnManager("tcp4", MainOptions.ProxyHost)
 
 	j.DefaultLogLevel = MainOptions.LogLevel
 	j.RegisterDefaultLogger(func() j.LogLevelMap {
@@ -105,10 +88,10 @@ func main() {
 
 	switch MainOptions.Service {
 	case "cruncher":
-		startCruncherClient(connManager)
+		startCruncherClient(connMngr)
 	case "imgresize":
-		resizeImages(connManager)
+		resizeImages(connMngr)
 	}
 
-	showNetStatistics(connManager)
+	//showNetStatistics(connManager)
 }

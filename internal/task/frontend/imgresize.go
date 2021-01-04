@@ -1,12 +1,10 @@
 package frontend
 
 import (
-	"bytes"
-	"encoding/gob"
 	"fmt"
 	job "github.com/AgentCoop/go-work"
 	"github.com/AgentCoop/go-work-tcpbalancer/internal/common/imgresize"
-	"github.com/AgentCoop/go-work-tcpbalancer/internal/common/net"
+	"github.com/AgentCoop/net-manager"
 	"io/ioutil"
 	"mime"
 	"os"
@@ -44,15 +42,13 @@ func (s *ImageResizer) SaveResizedImageTask(j job.JobInterface) (job.Init, job.R
 			t.Assert(err)
 		}
 	}
-	run := func(t *job.TaskInfo) {
-		ac := j.GetValue().(*net.ActiveConn)
+	run := func(task *job.TaskInfo) {
+		stream := j.GetValue().(netmanager.StreamConn)
 		select {
-		case dataFrame := <-ac.GetOnDataFrameChan():
+		case dataFrame := <-stream.RecvDataFrame():
 			res := &imgresize.Response{}
-			buf := bytes.NewBuffer(dataFrame)
-			dec := gob.NewDecoder(buf)
-			err := dec.Decode(res)
-			t.Assert(err)
+			err := dataFrame.Decode(res)
+			task.Assert(err)
 
 			baseName := fmt.Sprintf("%s-%dx%d%s",
 				res.OriginalName, res.ResizedWidth, res.ResizedHeight, res.Typ.ToFileExt())
@@ -60,33 +56,32 @@ func (s *ImageResizer) SaveResizedImageTask(j job.JobInterface) (job.Init, job.R
 			ioutil.WriteFile(filename, res.ImgData, 0775)
 			s.savedCounter++
 
-			ac.OnDataFrameDoneChan <- struct{}{}
-			//fmt.Printf("[ save-task ]: file %s has been saved\n", filename)
+			stream.RecvDataFrameSync()
 			j.Log(1) <- fmt.Sprintf("[ save-task ]: file %s has been saved\n", filename)
 		default:
 			// Finish job
 			if s.done && s.savedCounter >= s.foundCounter {
-				t.Done()
+				task.Done()
 				j.Finish()
 			}
 		}
-		t.Tick()
+		task.Tick()
 	}
 	return init, run, nil
 }
 
 // Scans the given directory for images to resize.
 func (s *ImageResizer) ScanForImagesTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
-	init := func(t *job.TaskInfo) {
-		t.SetResult(0) // scanned images counter
+	init := func(task *job.TaskInfo) {
+		task.SetResult(0) // scanned images counter
 	}
-	run := func(t *job.TaskInfo) {
+	run := func(task *job.TaskInfo) {
 		req := &imgresize.Request{}
 		req.TargetWidth = s.w
 		req.TargetHeight = s.h
 		filepath.Walk(s.inputDir, func(path string, info os.FileInfo, err error) error {
-			t.Assert(err)
-			ac := j.GetValue().(*net.ActiveConn)
+			task.Assert(err)
+			stream := j.GetValue().(netmanager.StreamConn)
 
 			req.OriginalName = info.Name()
 			fileExt := filepath.Ext(info.Name())
@@ -100,18 +95,18 @@ func (s *ImageResizer) ScanForImagesTask(j job.JobInterface) (job.Init, job.Run,
 			}
 
 			data, err := ioutil.ReadFile(path)
-			t.Assert(err)
+			task.Assert(err)
 			req.ImgData = data
 
-			ac.GetWriteChan() <- req
-			<-ac.GetWriteDoneChan()
+			stream.Write() <- req
+			stream.WriteSync()
 
 			s.foundCounter++
 			j.Log(1) <- fmt.Sprintf("[ scanner-task ]: image file %s dispatched for resizing\n", path)
 			return nil
 		})
 		s.done = true
-		t.Done()
+		task.Done()
 	}
 	return init, run, func() { }
 }

@@ -4,8 +4,9 @@ import (
 	"fmt"
 	j "github.com/AgentCoop/go-work"
 	"github.com/AgentCoop/go-work-tcpbalancer/internal/backend"
-	"github.com/AgentCoop/go-work-tcpbalancer/internal/backend/task"
 	n "github.com/AgentCoop/go-work-tcpbalancer/internal/common/net"
+	t "github.com/AgentCoop/go-work-tcpbalancer/internal/task/backend"
+	"github.com/AgentCoop/net-manager"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -24,25 +25,25 @@ func newConnManager(port int) n.ConnManager {
 	return connManager
 }
 
-func startCruncherServer(connManager n.ConnManager) {
+func startCruncherServer(connManager netmanager.ConnManager) {
 	for {
 		mainJob := j.NewJob(nil)
 		mainJob.AddOneshotTask(connManager.AcceptTask)
 		mainJob.AddTask(connManager.ReadTask)
 		mainJob.AddTask(connManager.WriteTask)
-		mainJob.AddTask(backend.CruncherTask)
+		mainJob.AddTask(t.CruncherTask)
 		<-mainJob.RunInBackground()
 		fmt.Printf("done job\n")
 	}
 }
 
-func startImgServer(connManager n.ConnManager) {
+func startImgServer(connManager netmanager.ConnManager) {
 	for {
 		mainJob := j.NewJob(nil)
 		mainJob.AddOneshotTask(connManager.AcceptTask)
 		mainJob.AddTask(connManager.ReadTask)
 		mainJob.AddTask(connManager.WriteTask)
-		mainJob.AddTask(task.ResizeImageTask)
+		mainJob.AddTask(t.ResizeImageTask)
 		<-mainJob.RunInBackground()
 		go func() {
 			for {
@@ -75,15 +76,17 @@ func main() {
 		os.Exit(-1)
 	}
 
-	connManager := newConnManager(backend.CliOptions.Port)
+	netMngr := netmanager.NewNetworkManager()
+	localAddr := backend.CliOptions.Name + ":" + strconv.Itoa(backend.CliOptions.Port)
+	connMngr := netMngr.NewConnManager("tcp4", localAddr)
 
 	switch backend.CliOptions.Service {
 	case "cruncher":
-		go startCruncherServer(connManager)
+		go startCruncherServer(connMngr)
 		fmt.Printf("💻 [ %s:cruncher ] is listening on port %d\n",
 			backend.CliOptions.Name, backend.CliOptions.Port)
 	case "img":
-		go startImgServer(connManager)
+		go startImgServer(connMngr)
 		fmt.Printf("💻 [ %s:img ] is listening on port %d\n",
 			backend.CliOptions.Name, backend.CliOptions.Port)
 	}
