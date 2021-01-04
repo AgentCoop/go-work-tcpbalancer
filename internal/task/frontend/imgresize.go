@@ -32,7 +32,7 @@ func NewImageResizer(input string, output string, w uint, h uint) *ImageResizer 
 }
 
 // Saves resized image to the output dir
-func (s *ImageResizer) SaveResizedImageTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
+func (s *ImageResizer) SaveResizedImageTask(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
 	init := func(t *job.TaskInfo) {
 		if _, err := os.Stat(s.inputDir); os.IsNotExist(err) {
 			t.Assert(err)
@@ -71,7 +71,7 @@ func (s *ImageResizer) SaveResizedImageTask(j job.JobInterface) (job.Init, job.R
 }
 
 // Scans the given directory for images to resize.
-func (s *ImageResizer) ScanForImagesTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
+func (s *ImageResizer) ScanForImagesTask(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
 	init := func(task *job.TaskInfo) {
 		task.SetResult(0) // scanned images counter
 	}
@@ -108,5 +108,5 @@ func (s *ImageResizer) ScanForImagesTask(j job.JobInterface) (job.Init, job.Run,
 		s.done = true
 		task.Done()
 	}
-	return init, run, func() { }
+	return init, run, nil
 }

@@ -4,7 +4,6 @@ import (
 	"encoding/gob"
 	"fmt"
 	j "github.com/AgentCoop/go-work"
-	n "github.com/AgentCoop/go-work-tcpbalancer/internal/common/net"
 	"github.com/AgentCoop/net-manager"
 	"log"
 	"net/http"
@@ -51,11 +50,11 @@ func resizeImages(mngr netmanager.ConnManager) {
 	}
 }
 
-func showNetStatistics(manager n.ConnManager) {
-	fmt.Printf("-- [ Network Statistics ] --\n")
-	fmt.Printf("\tbytes sent: %0.2f Mb\n", float64(manager.GetBytesSent()) / 1e6)
-	fmt.Printf("\tbytes received: %0.2f Mb\n", float64(manager.GetBytesReceived()) / 1e6)
-}
+//func showNetStatistics(manager n.ConnManager) {
+//	fmt.Printf("-- [ Network Statistics ] --\n")
+//	fmt.Printf("\tbytes sent: %0.2f Mb\n", float64(manager.GetBytesSent()) / 1e6)
+//	fmt.Printf("\tbytes received: %0.2f Mb\n", float64(manager.GetBytesReceived()) / 1e6)
+//}
 var counter int
 
 func main() {
@@ -73,7 +72,7 @@ func main() {
 	j.DefaultLogLevel = MainOptions.LogLevel
 	j.RegisterDefaultLogger(func() j.LogLevelMap {
 		m := make(j.LogLevelMap)
-		handler := func(record interface{}) {
+		handler := func(record interface{}, level int) {
 			fmt.Printf("%s\n", record.(string))
 		}
 		m[1] = j.NewLogLevelMapItem(make(chan interface{}), handler)

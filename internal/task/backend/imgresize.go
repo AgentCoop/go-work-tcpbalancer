@@ -35,7 +35,7 @@ func resizeImage(t *job.TaskInfo, req *r.Request, stream netmanager.StreamConn) 
 	stream.WriteSync()
 }
 
-func ResizeImageTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
+func ResizeImageTask(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
 	run := func(task *job.TaskInfo) {
 		stream := j.GetValue().(netmanager.StreamConn)
 		select {
@@ -46,9 +46,15 @@ func ResizeImageTask(j job.JobInterface) (job.Init, job.Run, job.Cancel) {
 
 			resizeImage(task, payload, stream)
 			stream.RecvDataFrameSync()
-		default:
+		//default:
 		}
+		//j.Finish()
 		task.Tick()
 	}
-	return nil, run, func() { }
+	return nil, run, func(task *job.TaskInfo) {
+		//fmt.Printf("close %v %v\n", task.GetInterruptedBy())
+		//if task.Get() == io.EOF {
+		//
+		//}
+	}
 }
