@@ -2,6 +2,7 @@ package backend
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/AgentCoop/go-work"
 	r "github.com/AgentCoop/go-work-tcpbalancer/internal/common/imgresize"
 	"github.com/AgentCoop/net-manager"
@@ -52,9 +53,7 @@ func ResizeImageTask(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
 		task.Tick()
 	}
 	return nil, run, func(task *job.TaskInfo) {
-		//fmt.Printf("close %v %v\n", task.GetInterruptedBy())
-		//if task.Get() == io.EOF {
-		//
-		//}
+		_, err := task.GetInterruptedBy()
+		fmt.Printf("close by %s\n", err)
 	}
 }

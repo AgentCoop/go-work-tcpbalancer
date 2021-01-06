@@ -49,7 +49,7 @@ func (p *proxy) upstream(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
 		task.Tick()
 	}
 	return init, run, func(task *job.TaskInfo) {
-		j.Log(1) <- fmt.Sprintf("close proxy conn")
+		p.conn.Upstream().State = netmanager.IdleConn
 	}
 }
 
@@ -67,7 +67,8 @@ func (p *proxy) downstream(j job.JobInterface) (job.Init, job.Run, job.Finalize)
 		task.Tick()
 	}
 	return init, run, func(task *job.TaskInfo) {
-		j.Log(1) <- fmt.Sprintf("close proxy conn")
+		p.conn.Downstream().Close()
+		j.Log(1) <- fmt.Sprintf("close proxy conn, downstream")
 	}
 }
 
@@ -112,7 +113,7 @@ func (b Balancer) LoadBalance(j job.JobInterface) (job.Init, job.Run, job.Finali
 					select {
 					case <- pjob.GetDoneChan():
 						_, err := pjob.GetInterruptedBy()
-						pjob.Log(0) <- fmt.Sprintf("proxy conn job is %s", pjob.GetState(), err)
+						pjob.Log(0) <- fmt.Sprintf("proxy conn job is %s, error %s", pjob.GetState(), err)
 						j.Finish()
 						return
 					}

@@ -2,7 +2,10 @@ package main
 
 import (
 	"fmt"
-	//"fmt"
+	"log"
+	"net/http"
+	_ "net/http/pprof"
+	//"runtime/pprof"
 	job "github.com/AgentCoop/go-work"
 	"github.com/AgentCoop/go-work-tcpbalancer/internal/task/proxy"
 	netmanager "github.com/AgentCoop/net-manager"
@@ -45,8 +48,13 @@ func main() {
 	netMngr := netmanager.NewNetworkManager()
 	localAddr := "localhost:" + strconv.Itoa(CliOptions.Port)
 	connMngr := netMngr.NewConnManager("tcp4", localAddr)
+	connMngr.ReadbufLen = 256_000
 
 	go runLoadBalancer(connMngr)
+
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6062", nil))
+	}()
 
 	for {
 		time.Sleep(time.Second)
