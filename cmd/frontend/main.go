@@ -22,8 +22,8 @@ func startCruncherClient(mngr netmanager.ConnManager) {
 
 	mainJob := j.NewJob(nil)
 	mainJob.AddOneshotTask(mngr.ConnectTask)
-	mainJob.AddTask(mngr.ReadTask)
-	mainJob.AddTask(mngr.WriteTask)
+	mainJob.AddTask(netmanager.ReadTask)
+	mainJob.AddTask(netmanager.WriteTask)
 	mainJob.AddTask(cruncher.SquareNumsInBatchTask)
 	<-mainJob.Run()
 }
@@ -35,8 +35,8 @@ func resizeImages(mngr netmanager.ConnManager) {
 
 		mainJob := j.NewJob(nil)
 		mainJob.AddOneshotTask(mngr.ConnectTask)
-		mainJob.AddTask(mngr.ReadTask)
-		mainJob.AddTask(mngr.WriteTask)
+		mainJob.AddTask(netmanager.ReadTask)
+		mainJob.AddTask(netmanager.WriteTask)
 		mainJob.AddTask(imgResizer.ScanForImagesTask)
 		mainJob.AddTask(imgResizer.SaveResizedImageTask)
 		<-mainJob.Run()

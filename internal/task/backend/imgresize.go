@@ -11,7 +11,7 @@ import (
 	"image/png"
 )
 
-func resizeImage(t *job.TaskInfo, req *r.Request, stream netmanager.StreamConn) {
+func resizeImage(t *job.TaskInfo, req *r.Request, stream *netmanager.StreamConn) {
 	result := &r.Response{}
 	buf := bytes.NewBuffer(req.ImgData)
 	img, _, err := image.Decode(buf)
@@ -37,7 +37,7 @@ func resizeImage(t *job.TaskInfo, req *r.Request, stream netmanager.StreamConn) 
 
 func ResizeImageTask(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
 	run := func(task *job.TaskInfo) {
-		stream := j.GetValue().(netmanager.StreamConn)
+		stream := j.GetValue().(*netmanager.StreamConn)
 		select {
 		case frame := <-stream.RecvDataFrame():
 			payload := &r.Request{}

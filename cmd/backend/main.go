@@ -21,8 +21,8 @@ func startCruncherServer(connManager netmanager.ConnManager) {
 	for {
 		mainJob := job.NewJob(nil)
 		mainJob.AddOneshotTask(connManager.AcceptTask)
-		mainJob.AddTask(connManager.ReadTask)
-		mainJob.AddTask(connManager.WriteTask)
+		mainJob.AddTask(netmanager.ReadTask)
+		mainJob.AddTask(netmanager.WriteTask)
 		mainJob.AddTask(t.CruncherTask)
 		<-mainJob.RunInBackground()
 		fmt.Printf("done job\n")
@@ -33,8 +33,8 @@ func startImgServer(connManager netmanager.ConnManager) {
 	for {
 		mainJob := job.NewJob(nil)
 		mainJob.AddOneshotTask(connManager.AcceptTask)
-		mainJob.AddTask(connManager.ReadTask)
-		mainJob.AddTask(connManager.WriteTask)
+		mainJob.AddTask(netmanager.ReadTask)
+		mainJob.AddTask(netmanager.WriteTask)
 		mainJob.AddTask(t.ResizeImageTask)
 		<-mainJob.RunInBackground()
 		go func() {
@@ -43,7 +43,7 @@ func startImgServer(connManager netmanager.ConnManager) {
 				select {
 				case <-j.GetDoneChan():
 					_, err := mainJob.GetInterruptedBy()
-					j.Log(1) <- fmt.Sprintf("#%d job is %s, error: %s",
+					j.Log(0) <- fmt.Sprintf("#%d job is %s, error: %s",
 						counter + 1, strings.ToLower(j.GetState().String()), err)
 					counter++
 					return
@@ -69,12 +69,13 @@ func main() {
 	// Set up logger
 	job.DefaultLogLevel = CliOptions.LogLevel
 	job.RegisterDefaultLogger(func() job.LogLevelMap {
-		m := make(job.LogLevelMap)
+		m := make(job.LogLevelMap, 3)
 		handler := func(record interface{}, level int) {
 			prefix := fmt.Sprintf(" 💻[ %s:%s ] ", CliOptions.Name, CliOptions.Service) +
 				strings.Repeat("☞ ", level)
 			fmt.Printf("%s%s\n", prefix, record.(string))
 		}
+		m[0] = job.NewLogLevelMapItem(make(chan interface{}), handler)
 		m[1] = job.NewLogLevelMapItem(make(chan interface{}), handler)
 		m[2] = job.NewLogLevelMapItem(make(chan interface{}), handler)
 		return m
