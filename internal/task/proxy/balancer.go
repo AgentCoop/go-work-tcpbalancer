@@ -6,6 +6,7 @@ import (
 	netmanager "github.com/AgentCoop/net-manager"
 	"math/rand"
 	"net"
+	"time"
 )
 
 
@@ -35,7 +36,7 @@ type proxy struct {
 	conn netmanager.ProxyConn
 }
 
-func (p *proxy) upstream(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
+func (p *proxy) downstream(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
 	init := func(task *job.TaskInfo) {
 		p.conn.Upstream().DataKind = netmanager.DataRawKind
 	}
@@ -45,15 +46,17 @@ func (p *proxy) upstream(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
 			p.conn.Upstream().Write() <- dd
 			p.conn.Upstream().WriteSync()
 			p.conn.Downstream().RecvRawSync()
+			task.Tick()
+		default:
+			task.Idle()
 		}
-		task.Tick()
 	}
 	return init, run, func(task *job.TaskInfo) {
-		p.conn.Upstream().State = netmanager.IdleConn
+		p.conn.Upstream().CloseWithReuse()
 	}
 }
 
-func (p *proxy) downstream(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
+func (p *proxy) upstream(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
 	init := func(task *job.TaskInfo) {
 		p.conn.Downstream().DataKind = netmanager.DataRawKind
 	}
@@ -104,7 +107,7 @@ func (b Balancer) LoadBalance(j job.JobInterface) (job.Init, job.Run, job.Finali
 			pjob.AddTask(p.conn.ProxyReadUpstreamTask)
 			pjob.AddTask(p.conn.ProxyWriteDownstreamTask)
 			pjob.AddTask(p.conn.ProxyWriteUpstreamTask)
-			pjob.AddTask(p.downstream)
+			pjob.AddTaskWithIdleTimeout(p.downstream, time.Second * 2) // client connection timeout
 			pjob.AddTask(p.upstream)
 			<-pjob.RunInBackground()
 
