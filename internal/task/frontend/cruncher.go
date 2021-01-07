@@ -79,8 +79,8 @@ func (c *Cruncher) dispatchBatch(ac netmanager.Stream) {
 	}
 }
 
-func (c *Cruncher) SquareNumsInBatchTask(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
-	run := func(t *job.TaskInfo) {
+func (c *Cruncher) SquareNumsInBatchTask(j job.Job) (job.Init, job.Run, job.Finalize) {
+	run := func(t job.Task) {
 		//ac := j.GetValue().(ac netmanager.StreamConn)
 		//cm := ac.GetConnManager()
 		////fmt.Printf("Connected\n")

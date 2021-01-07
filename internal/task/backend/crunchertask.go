@@ -22,8 +22,8 @@ func crunchNumbers(payload *frontend.CruncherPayload, stream netmanager.Stream) 
 	stream.WriteSync()
 }
 
-func CruncherTask(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
-	run := func(t *job.TaskInfo) {
+func CruncherTask(j job.Job) (job.Init, job.Run, job.Finalize) {
+	run := func(t job.Task) {
 		ac := j.GetValue().(netmanager.Stream)
 		for {
 			select {

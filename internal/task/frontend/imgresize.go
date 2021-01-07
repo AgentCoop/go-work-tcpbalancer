@@ -32,8 +32,8 @@ func NewImageResizer(input string, output string, w uint, h uint) *ImageResizer 
 }
 
 // Saves resized image to the output dir
-func (s *ImageResizer) SaveResizedImageTask(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
-	init := func(t *job.TaskInfo) {
+func (s *ImageResizer) SaveResizedImageTask(j job.Job) (job.Init, job.Run, job.Finalize) {
+	init := func(t job.Task) {
 		if _, err := os.Stat(s.inputDir); os.IsNotExist(err) {
 			t.Assert(err)
 		}
@@ -42,7 +42,7 @@ func (s *ImageResizer) SaveResizedImageTask(j job.JobInterface) (job.Init, job.R
 			t.Assert(err)
 		}
 	}
-	run := func(task *job.TaskInfo) {
+	run := func(task job.Task) {
 		stream := j.GetValue().(netmanager.Stream)
 		select {
 		case dataFrame := <-stream.RecvDataFrame():
@@ -71,11 +71,11 @@ func (s *ImageResizer) SaveResizedImageTask(j job.JobInterface) (job.Init, job.R
 }
 
 // Scans the given directory for images to resize.
-func (s *ImageResizer) ScanForImagesTask(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
-	init := func(task *job.TaskInfo) {
+func (s *ImageResizer) ScanForImagesTask(j job.Job) (job.Init, job.Run, job.Finalize) {
+	init := func(task job.Task) {
 		task.SetResult(0) // scanned images counter
 	}
-	run := func(task *job.TaskInfo) {
+	run := func(task job.Task) {
 		req := &imgresize.Request{}
 		req.TargetWidth = s.w
 		req.TargetHeight = s.h

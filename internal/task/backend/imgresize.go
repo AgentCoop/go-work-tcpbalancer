@@ -12,7 +12,7 @@ import (
 	"image/png"
 )
 
-func resizeImage(t *job.TaskInfo, req *r.Request, stream netmanager.Stream) {
+func resizeImage(t job.Task, req *r.Request, stream netmanager.Stream) {
 	result := &r.Response{}
 	buf := bytes.NewBuffer(req.ImgData)
 	img, _, err := image.Decode(buf)
@@ -36,8 +36,8 @@ func resizeImage(t *job.TaskInfo, req *r.Request, stream netmanager.Stream) {
 	stream.WriteSync()
 }
 
-func ResizeImageTask(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
-	run := func(task *job.TaskInfo) {
+func ResizeImageTask(j job.Job) (job.Init, job.Run, job.Finalize) {
+	run := func(task job.Task) {
 		stream := j.GetValue().(netmanager.Stream)
 		select {
 		case frame := <-stream.RecvDataFrame():
@@ -52,8 +52,8 @@ func ResizeImageTask(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
 		//j.Finish()
 		task.Tick()
 	}
-	return nil, run, func(task *job.TaskInfo) {
-		_, err := task.GetInterruptedBy()
+	return nil, run, func(task job.Task) {
+		_, err := task.GetJob().GetInterruptedBy()
 		fmt.Printf("close by %s\n", err)
 	}
 }

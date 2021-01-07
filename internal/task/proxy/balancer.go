@@ -36,11 +36,11 @@ type proxy struct {
 	conn netmanager.ProxyConn
 }
 
-func (p *proxy) downstream(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
-	init := func(task *job.TaskInfo) {
+func (p *proxy) downstream(j job.Job) (job.Init, job.Run, job.Finalize) {
+	init := func(task job.Task) {
 		///p.conn.Upstream().DataKind = netmanager.DataRawKind
 	}
-	run := func(task *job.TaskInfo) {
+	run := func(task job.Task) {
 		select {
 		case dd := <- p.conn.Downstream().RecvRaw():
 			p.conn.Upstream().Write() <- dd
@@ -51,17 +51,17 @@ func (p *proxy) downstream(j job.JobInterface) (job.Init, job.Run, job.Finalize)
 			task.Idle()
 		}
 	}
-	fin := func(task *job.TaskInfo) {
+	fin := func(task job.Task) {
 		p.conn.Upstream().CloseWithReuse()
 	}
 	return init, run, fin
 }
 
-func (p *proxy) upstream(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
-	init := func(task *job.TaskInfo) {
+func (p *proxy) upstream(j job.Job) (job.Init, job.Run, job.Finalize) {
+	init := func(task job.Task) {
 		//p.conn.Downstream().DataKind = netmanager.DataRawKind
 	}
-	run := func(task *job.TaskInfo) {
+	run := func(task job.Task) {
 		select {
 		case data := <- p.conn.Upstream().RecvRaw():
 			p.conn.Downstream().Write() <- data
@@ -70,27 +70,27 @@ func (p *proxy) upstream(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
 		}
 		task.Tick()
 	}
-	return init, run, func(task *job.TaskInfo) {
+	return init, run, func(task job.Task) {
 		p.conn.Downstream().Close()
 		j.Log(1) <- fmt.Sprintf("close proxy conn, downstream")
 	}
 }
 
-func (p *proxy) ReadUpstreamTask(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
+func (p *proxy) ReadUpstreamTask(j job.Job) (job.Init, job.Run, job.Finalize) {
 	u := p.conn.Upstream()
 	return u.ReadOnStreamTask(j)
 }
 
-func (b Balancer) LoadBalance(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
+func (b Balancer) LoadBalance(j job.Job) (job.Init, job.Run, job.Finalize) {
 	// Resolve hostnames of the upstream servers
-	init := func(task *job.TaskInfo) {
+	init := func(task job.Task) {
 		for _, srv := range b.upstreamServers {
 			tcpAddr, err := net.ResolveTCPAddr("tcp4", srv.Server.Host)
 			task.Assert(err)
 			srv.TcpAddr = tcpAddr
 		}
 	}
-	run := func(task *job.TaskInfo) {
+	run := func(task job.Task) {
 		clientConn := j.GetValue().(netmanager.Stream)
 		select {
 		case <- clientConn.NewConn():
