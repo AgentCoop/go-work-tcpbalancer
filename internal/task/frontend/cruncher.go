@@ -64,7 +64,7 @@ func (c *Cruncher) newBatch(num int) *CruncherPayload {
 	return r
 }
 
-func (c *Cruncher) dispatchBatch(ac netmanager.StreamConn) {
+func (c *Cruncher) dispatchBatch(ac netmanager.Stream) {
 	nBatches := randInt(int(c.minBatches), int(c.maxBatches))
 	// Map request data with response
 	bp := make(BatchMap)

@@ -7,7 +7,7 @@ import (
 	"github.com/AgentCoop/net-manager"
 )
 
-func crunchNumbers(payload *frontend.CruncherPayload, stream netmanager.StreamConn) {
+func crunchNumbers(payload *frontend.CruncherPayload, stream netmanager.Stream) {
 	result := &frontend.CruncherResult{}
 	result.SquaredNums = make([]uint64, payload.ItemsCount)
 	result.BatchNum = payload.BatchNum
@@ -24,7 +24,7 @@ func crunchNumbers(payload *frontend.CruncherPayload, stream netmanager.StreamCo
 
 func CruncherTask(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
 	run := func(t *job.TaskInfo) {
-		ac := j.GetValue().(netmanager.StreamConn)
+		ac := j.GetValue().(netmanager.Stream)
 		for {
 			select {
 			//case <-ac.GetOnNewConnChan():

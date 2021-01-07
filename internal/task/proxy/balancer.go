@@ -38,7 +38,7 @@ type proxy struct {
 
 func (p *proxy) downstream(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
 	init := func(task *job.TaskInfo) {
-		p.conn.Upstream().DataKind = netmanager.DataRawKind
+		///p.conn.Upstream().DataKind = netmanager.DataRawKind
 	}
 	run := func(task *job.TaskInfo) {
 		select {
@@ -51,14 +51,15 @@ func (p *proxy) downstream(j job.JobInterface) (job.Init, job.Run, job.Finalize)
 			task.Idle()
 		}
 	}
-	return init, run, func(task *job.TaskInfo) {
+	fin := func(task *job.TaskInfo) {
 		p.conn.Upstream().CloseWithReuse()
 	}
+	return init, run, fin
 }
 
 func (p *proxy) upstream(j job.JobInterface) (job.Init, job.Run, job.Finalize) {
 	init := func(task *job.TaskInfo) {
-		p.conn.Downstream().DataKind = netmanager.DataRawKind
+		//p.conn.Downstream().DataKind = netmanager.DataRawKind
 	}
 	run := func(task *job.TaskInfo) {
 		select {
@@ -90,15 +91,15 @@ func (b Balancer) LoadBalance(j job.JobInterface) (job.Init, job.Run, job.Finali
 		}
 	}
 	run := func(task *job.TaskInfo) {
-		clientConn := j.GetValue().(*netmanager.StreamConn)
+		clientConn := j.GetValue().(netmanager.Stream)
 		select {
 		case <- clientConn.NewConn():
 			j.Log(0) <- fmt.Sprintf("new conn from")
-			connMngr := clientConn.GetConnManager()
-			netMngr := connMngr.GetNetworkManager()
+			//connMngr := clientConn.GetConnManager()
+			//netMngr := connMngr.GetNetworkManager()
 
 			upstreamSrv := b.SelectRandom()
-			proxyConn := netMngr.NewProxyConn(upstreamSrv, clientConn)
+			proxyConn := netmanager.NewProxyConn(upstreamSrv, clientConn)
 			p := &proxy{conn: proxyConn}
 
 			pjob := job.NewJob(upstreamSrv.TcpAddr)

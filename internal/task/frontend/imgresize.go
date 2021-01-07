@@ -43,7 +43,7 @@ func (s *ImageResizer) SaveResizedImageTask(j job.JobInterface) (job.Init, job.R
 		}
 	}
 	run := func(task *job.TaskInfo) {
-		stream := j.GetValue().(*netmanager.StreamConn)
+		stream := j.GetValue().(netmanager.Stream)
 		select {
 		case dataFrame := <-stream.RecvDataFrame():
 			res := &imgresize.Response{}
@@ -81,7 +81,7 @@ func (s *ImageResizer) ScanForImagesTask(j job.JobInterface) (job.Init, job.Run,
 		req.TargetHeight = s.h
 		filepath.Walk(s.inputDir, func(path string, info os.FileInfo, err error) error {
 			task.Assert(err)
-			stream := j.GetValue().(*netmanager.StreamConn)
+			stream := j.GetValue().(netmanager.Stream)
 
 			req.OriginalName = info.Name()
 			fileExt := filepath.Ext(info.Name())
