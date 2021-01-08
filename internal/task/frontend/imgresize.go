@@ -46,6 +46,9 @@ func (s *ImageResizer) SaveResizedImageTask(j job.Job) (job.Init, job.Run, job.F
 		stream := j.GetValue().(netmanager.Stream)
 		select {
 		case dataFrame := <-stream.RecvDataFrame():
+			if dataFrame == nil {
+				fmt.Printf(" -->>>  nil data frame\n")
+			}
 			res := &imgresize.Response{}
 			err := dataFrame.Decode(res)
 			task.Assert(err)
@@ -55,14 +58,16 @@ func (s *ImageResizer) SaveResizedImageTask(j job.Job) (job.Init, job.Run, job.F
 			filename := s.outputDir + string(os.PathSeparator) + baseName
 			ioutil.WriteFile(filename, res.ImgData, 0775)
 			s.savedCounter++
-
+			fmt.Printf(" --->>        done %v %d %d\n", s.done, s.savedCounter, s.foundCounter)
 			stream.RecvDataFrameSync()
 			j.Log(1) <- fmt.Sprintf("[ save-task ]: file %s has been saved\n", filename)
 		default:
 			// Finish job
 			if s.done && s.savedCounter >= s.foundCounter {
 				task.Done()
+				fmt.Printf("task done\n")
 				j.Finish()
+				return
 			}
 		}
 		task.Tick()

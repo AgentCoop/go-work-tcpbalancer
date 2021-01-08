@@ -3,50 +3,66 @@ package main
 import (
 	"encoding/gob"
 	"fmt"
-	j "github.com/AgentCoop/go-work"
+	"github.com/AgentCoop/go-work"
 	"github.com/AgentCoop/net-manager"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"runtime"
-
-	//	"github.com/AgentCoop/go-work-tcpbalancer/internal/frontend/task"
+	"sync"
+	"time"
 	"github.com/AgentCoop/go-work-tcpbalancer/internal/task/frontend"
-	"os"
-	//	"time"
 )
 
-func startCruncherClient(mngr netmanager.ConnManager) {
-	cruncher := frontend.NewCruncher(CruncherOpts.MinBatchesPerConn, CruncherOpts.MaxBatchesPerConn,
-		CruncherOpts.MinItemsPerBatch, CruncherOpts.MaxBatchesPerConn)
+var jobCounter int
 
-	mainJob := j.NewJob(nil)
-	mainJob.AddOneshotTask(mngr.ConnectTask)
-	mainJob.AddTask(netmanager.ReadTask)
-	mainJob.AddTask(netmanager.WriteTask)
-	mainJob.AddTask(cruncher.SquareNumsInBatchTask)
-	<-mainJob.Run()
+// Executes the given job in parallel using N goroutines
+func execInParallel(f func() job.Job, N int) {
+	var wg sync.WaitGroup
+	for i := 0; i < N; i++ {
+		wg.Add(1)
+		go func() {
+			job := f()
+			select {
+			case <- job.Run():
+				job.Log(0) <- fmt.Sprintf("#%d job is %s", jobCounter+1, job.GetState())
+				jobCounter++
+				wg.Done()
+				return
+			}
+		}()
+	}
+	wg.Wait()
+}
+
+func startCruncherClient(mngr netmanager.ConnManager) {
+	//cruncher := frontend.NewCruncher(CruncherOpts.MinBatchesPerConn, CruncherOpts.MaxBatchesPerConn,
+	//	CruncherOpts.MinItemsPerBatch, CruncherOpts.MaxBatchesPerConn)
+	//f := func() job.Job {
+	//	mainJob := job.NewJob(nil)
+	//	mainJob.AddOneshotTask(mngr.ConnectTask)
+	//	mainJob.AddTask(netmanager.ReadTask)
+	//	mainJob.AddTask(netmanager.WriteTask)
+	//	mainJob.AddTask(cruncher.SquareNumsInBatchTask)
+	//	return mainJob
+	//}
 }
 
 func resizeImages(mngr netmanager.ConnManager) {
-	for i := 0; i < ImgResizeOpts.Times; i++ {
-		imgResizer := frontend.NewImageResizer(ImgResizeOpts.ImgDir, ImgResizeOpts.OutputDir,
-			ImgResizeOpts.Width, ImgResizeOpts.Height)
-
-		mainJob := j.NewJob(nil)
-		mainJob.AddOneshotTask(mngr.ConnectTask)
-		mainJob.AddTask(netmanager.ReadTask)
-		mainJob.AddTask(netmanager.WriteTask)
-		mainJob.AddTask(imgResizer.ScanForImagesTask)
-		mainJob.AddTask(imgResizer.SaveResizedImageTask)
-		<-mainJob.Run()
-
-		counter++
-		fmt.Printf("run %d\n", counter)
-		if mainJob.IsCancelled() {
-			fmt.Printf("job failed %s\n", mainJob.GetState())
-			os.Exit(-1)
+	n := ImgResizeOpts.Times / MainOptions.MaxConns
+	for i := 0; i < n; i++ {
+		f := func() job.Job {
+			imgResizer := frontend.NewImageResizer(ImgResizeOpts.ImgDir, ImgResizeOpts.OutputDir,
+				ImgResizeOpts.Width, ImgResizeOpts.Height)
+			j := job.NewJob(nil)
+			j.AddOneshotTask(mngr.ConnectTask)
+			j.AddTask(netmanager.ReadTask)
+			j.AddTask(netmanager.WriteTask)
+			j.AddTask(imgResizer.ScanForImagesTask)
+			j.AddTask(imgResizer.SaveResizedImageTask)
+			return j
 		}
+		execInParallel(f, MainOptions.MaxConns)
 	}
 }
 
@@ -59,26 +75,11 @@ var counter int
 
 func main() {
 	ParseCliOptions()
-
-	if len(MainOptions.ProxyHost) == 0 {
-		fmt.Printf("Specify a proxy server to connect to\n")
-		os.Exit(-1)
-	}
+	initLogger()
 
 	gob.Register(&frontend.CruncherPayload{})
 	netMngr := netmanager.NewNetworkManager()
 	connMngr := netMngr.NewConnManager("tcp4", MainOptions.ProxyHost)
-
-	j.DefaultLogLevel = MainOptions.LogLevel
-	j.RegisterDefaultLogger(func() j.LogLevelMap {
-		m := make(j.LogLevelMap)
-		handler := func(record interface{}, level int) {
-			fmt.Printf("%s\n", record.(string))
-		}
-		m[1] = j.NewLogLevelMapItem(make(chan interface{}), handler)
-		m[2] = j.NewLogLevelMapItem(make(chan interface{}), handler)
-		return m
-	})
 
 	runtime.SetBlockProfileRate(6)
 	go func() {
@@ -91,6 +92,8 @@ func main() {
 	case "imgresize":
 		resizeImages(connMngr)
 	}
+
+	time.Sleep(time.Second * 4)
 
 	//showNetStatistics(connManager)
 }

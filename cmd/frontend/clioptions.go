@@ -9,10 +9,10 @@ var MainOptions struct {
 	ProxyHost string `long:"proxy" required:"true"`
 	Service string `long:"service" required:"true"`
 	LogLevel int `long:"loglevel"`
+	MaxConns int `long:"maxconns"`
 }
 
 var CruncherOpts struct {
-	MaxConns int `long:"maxconns" description:""`
 	MinBatchesPerConn uint `long:"batch-min"`
 	MaxBatchesPerConn uint `long:"batch-max"`
 	MinItemsPerBatch uint `long:"batch-min-items"`
@@ -36,6 +36,8 @@ func ParseCliOptions() {
 	parser := newParser(&MainOptions)
 	remOpts, err := parser.ParseArgs(os.Args)
 	if err != nil { panic(err) }
+
+	if MainOptions.MaxConns == 0 { MainOptions.MaxConns = 1 }
 
 	switch MainOptions.Service {
 	case "cruncher":

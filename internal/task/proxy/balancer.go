@@ -63,10 +63,10 @@ func (p *proxy) upstream(j job.Job) (job.Init, job.Run, job.Finalize) {
 	}
 	run := func(task job.Task) {
 		select {
-		case data := <- p.conn.Upstream().RecvRaw():
-			p.conn.Downstream().Write() <- data
-			p.conn.Downstream().WriteSync()
-			p.conn.Upstream().RecvRawSync()
+		case data := <- p.conn.Upstream().RecvRaw(): // Receive data from upstream server
+			p.conn.Downstream().Write() <- data // Write data to downstream server
+			p.conn.Downstream().WriteSync() // sync with downstream data receiver
+			p.conn.Upstream().RecvRawSync() // sync with upstream data sender
 		}
 		task.Tick()
 	}
