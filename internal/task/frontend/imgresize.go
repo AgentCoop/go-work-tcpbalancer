@@ -16,9 +16,6 @@ type ImageResizer struct {
 	outputDir string
 	w uint
 	h uint
-	foundCounter int
-	savedCounter int
-	done bool
 }
 
 func NewImageResizer(input string, output string, w uint, h uint) *ImageResizer {
@@ -57,20 +54,13 @@ func (s *ImageResizer) SaveResizedImageTask(j job.Job) (job.Init, job.Run, job.F
 				res.OriginalName, res.ResizedWidth, res.ResizedHeight, res.Typ.ToFileExt())
 			filename := s.outputDir + string(os.PathSeparator) + baseName
 			ioutil.WriteFile(filename, res.ImgData, 0775)
-			s.savedCounter++
-			fmt.Printf(" --->>        done %v %d %d\n", s.done, s.savedCounter, s.foundCounter)
 			stream.RecvDataFrameSync()
+
 			j.Log(1) <- fmt.Sprintf("[ save-task ]: file %s has been saved\n", filename)
+			task.Tick()
 		default:
-			// Finish job
-			if s.done && s.savedCounter >= s.foundCounter {
-				task.Done()
-				fmt.Printf("task done\n")
-				j.Finish()
-				return
-			}
+			task.Idle()
 		}
-		task.Tick()
 	}
 	return init, run, nil
 }
@@ -106,11 +96,9 @@ func (s *ImageResizer) ScanForImagesTask(j job.Job) (job.Init, job.Run, job.Fina
 			stream.Write() <- req
 			stream.WriteSync()
 
-			s.foundCounter++
 			j.Log(1) <- fmt.Sprintf("[ scanner-task ]: image file %s dispatched for resizing\n", path)
 			return nil
 		})
-		s.done = true
 		task.Done()
 	}
 	return init, run, nil

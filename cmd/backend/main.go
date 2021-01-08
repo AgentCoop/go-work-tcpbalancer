@@ -17,18 +17,6 @@ import (
 
 var counter int
 
-func startCruncherServer(connManager netmanager.ConnManager) {
-	for {
-		mainJob := job.NewJob(nil)
-		mainJob.AddOneshotTask(connManager.AcceptTask)
-		mainJob.AddTask(netmanager.ReadTask)
-		mainJob.AddTask(netmanager.WriteTask)
-		mainJob.AddTask(t.CruncherTask)
-		<-mainJob.RunInBackground()
-		fmt.Printf("done job\n")
-	}
-}
-
 func startImgServer(connManager netmanager.ConnManager) {
 	for {
 		mainJob := job.NewJob(nil)
@@ -71,7 +59,7 @@ func main() {
 	job.RegisterDefaultLogger(func() job.LogLevelMap {
 		m := make(job.LogLevelMap, 3)
 		handler := func(record interface{}, level int) {
-			prefix := fmt.Sprintf(" 💻[ %s:%s ] ", CliOptions.Name, CliOptions.Service) +
+			prefix := fmt.Sprintf(" 💻[ %s ] ", CliOptions.Name) +
 				strings.Repeat("☞ ", level)
 			fmt.Printf("%s%s\n", prefix, record.(string))
 		}
@@ -87,16 +75,10 @@ func main() {
 	opts.ReadbufLen = 256_00
 	connMngr := netMngr.NewConnManager("tcp4", localAddr, opts)
 
-	switch CliOptions.Service {
-	case "cruncher":
-		go startCruncherServer(connMngr)
-		fmt.Printf(" 💻[ %s:cruncher ] is listening on port %d\n",
+
+	go startImgServer(connMngr)
+	fmt.Printf(" 💻[ %s:img ] is listening on port %d\n",
 			CliOptions.Name, CliOptions.Port)
-	case "img":
-		go startImgServer(connMngr)
-		fmt.Printf(" 💻[ %s:img ] is listening on port %d\n",
-			CliOptions.Name, CliOptions.Port)
-	}
 
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6061", nil))
