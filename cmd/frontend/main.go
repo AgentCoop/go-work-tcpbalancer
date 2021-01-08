@@ -4,14 +4,13 @@ import (
 	"encoding/gob"
 	"fmt"
 	"github.com/AgentCoop/go-work"
+	"github.com/AgentCoop/go-work-tcpbalancer/internal/task/frontend"
 	"github.com/AgentCoop/net-manager"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"runtime"
 	"sync"
-	"time"
-	"github.com/AgentCoop/go-work-tcpbalancer/internal/task/frontend"
 )
 
 var jobCounter int
@@ -79,7 +78,7 @@ func main() {
 
 	gob.Register(&frontend.CruncherPayload{})
 	netMngr := netmanager.NewNetworkManager()
-	connMngr := netMngr.NewConnManager("tcp4", MainOptions.ProxyHost)
+	connMngr := netMngr.NewConnManager("tcp4", MainOptions.ProxyHost, nil)
 
 	runtime.SetBlockProfileRate(6)
 	go func() {
@@ -92,8 +91,6 @@ func main() {
 	case "imgresize":
 		resizeImages(connMngr)
 	}
-
-	time.Sleep(time.Second * 4)
 
 	//showNetStatistics(connManager)
 }

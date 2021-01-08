@@ -83,8 +83,9 @@ func main() {
 
 	netMngr := netmanager.NewNetworkManager()
 	localAddr := CliOptions.Name + ":" + strconv.Itoa(CliOptions.Port)
-	connMngr := netMngr.NewConnManager("tcp4", localAddr)
-	connMngr.ReadbufLen = 256_00
+	opts := &netmanager.ConnManagerOptions{}
+	opts.ReadbufLen = 256_00
+	connMngr := netMngr.NewConnManager("tcp4", localAddr, opts)
 
 	switch CliOptions.Service {
 	case "cruncher":

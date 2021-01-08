@@ -47,8 +47,10 @@ func main() {
 
 	netMngr := netmanager.NewNetworkManager()
 	localAddr := "localhost:" + strconv.Itoa(CliOptions.Port)
-	connMngr := netMngr.NewConnManager("tcp4", localAddr)
-	connMngr.ReadbufLen = 256_000
+	opts := &netmanager.ConnManagerOptions{}
+	opts.ReadbufLen = 256_00
+	opts.InboundLimit = CliOptions.MaxClientConns
+	connMngr := netMngr.NewConnManager("tcp4", localAddr, opts)
 
 	go runLoadBalancer(connMngr)
 
