@@ -53,6 +53,7 @@ func main() {
 	connMngr := netMngr.NewConnManager("tcp4", localAddr, opts)
 
 	go runLoadBalancer(connMngr)
+	fmt.Printf(" 🌎[ proxy server ] is listening on port %d\n", CliOptions.Port)
 
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6062", nil))
