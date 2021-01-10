@@ -8,8 +8,7 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
-	"os"
-	"runtime/pprof"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -18,12 +17,15 @@ import (
 var counter int
 
 func startImgServer(connManager netmanager.ConnManager) {
+	opts := &t.ResizerOptions{}
 	for {
-		mainJob := job.NewJob(nil)
+		fmt.Printf("new conn\n")
+		mainJob := job.NewJob(opts)
 		mainJob.AddOneshotTask(connManager.AcceptTask)
 		mainJob.AddTask(netmanager.ReadTask)
+		//mainJob.AddTaskWithIdleTimeout(netmanager.ReadTask, time.Second * 12)
 		mainJob.AddTask(netmanager.WriteTask)
-		mainJob.AddTask(t.ResizeImageTask)
+		mainJob.AddTask(opts.ResizeImageTask)
 		<-mainJob.RunInBackground()
 		go func() {
 			j := mainJob
@@ -31,10 +33,11 @@ func startImgServer(connManager netmanager.ConnManager) {
 				select {
 				case <-j.GetDoneChan():
 					_, err := mainJob.GetInterruptedBy()
-					j.Log(0) <- fmt.Sprintf("#%d job is %s, error: %s",
+					j.Log(1) <- fmt.Sprintf("#%d job is %s, error: %s",
 						counter + 1, strings.ToLower(j.GetState().String()), err)
 					counter++
-					return
+					j.Log(1) <- fmt.Sprintf("N gouroutines %d", runtime.NumGoroutine())
+ 					return
 				}
 			}
 		}()
@@ -44,15 +47,16 @@ func startImgServer(connManager netmanager.ConnManager) {
 func main() {
 	ParseCliOptions()
 
-	if CliOptions.CpuProfile != "" {
-		fmt.Println(CliOptions.CpuProfile)
-		f, err := os.Create(CliOptions.CpuProfile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		pprof.StartCPUProfile(f)
-		defer pprof.StopCPUProfile()
-	}
+	//if CliOptions.CpuProfile != "" {
+	//	fmt.Println(CliOptions.CpuProfile)
+	//	f, err := os.Create(CliOptions.CpuProfile)
+	//	if err != nil {
+	//		log.Fatal(err)
+	//	}
+	//	runtime.SetCPUProfileRate(100)
+	//	pprof.StartCPUProfile(f)
+	//	defer pprof.StopCPUProfile()
+	//}
 
 	// Set up logger
 	job.DefaultLogLevel = CliOptions.LogLevel
@@ -72,12 +76,11 @@ func main() {
 	netMngr := netmanager.NewNetworkManager()
 	localAddr := CliOptions.Name + ":" + strconv.Itoa(CliOptions.Port)
 	opts := &netmanager.ConnManagerOptions{}
-	opts.ReadbufLen = 256_00
+	opts.ReadbufLen = 4096
 	connMngr := netMngr.NewConnManager("tcp4", localAddr, opts)
-
-
+	//_ = connMngr
 	go startImgServer(connMngr)
-	fmt.Printf(" 💻[ %s:img ] is listening on port %d\n",
+	fmt.Printf(" 💻[ %s ] is listening on port %d\n",
 			CliOptions.Name, CliOptions.Port)
 
 	go func() {

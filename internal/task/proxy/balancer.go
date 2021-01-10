@@ -94,7 +94,7 @@ func (b Balancer) LoadBalance(j job.Job) (job.Init, job.Run, job.Finalize) {
 		clientConn := j.GetValue().(netmanager.Stream)
 		select {
 		case <- clientConn.NewConn():
-			j.Log(0) <- fmt.Sprintf("new conn from")
+			j.Log(0) <- fmt.Sprintf("new conn from %s", clientConn.String())
 			//connMngr := clientConn.GetConnManager()
 			//netMngr := connMngr.GetNetworkManager()
 
@@ -105,15 +105,16 @@ func (b Balancer) LoadBalance(j job.Job) (job.Init, job.Run, job.Finalize) {
 			pjob := job.NewJob(upstreamSrv.TcpAddr)
 			pjob.AddOneshotTask(proxyConn.ProxyConnectTask)
 			pjob.AddTask(p.conn.ProxyReadDownstreamTask)
+
 			pjob.AddTask(p.conn.ProxyReadUpstreamTask)
 			pjob.AddTask(p.conn.ProxyWriteDownstreamTask)
 			pjob.AddTask(p.conn.ProxyWriteUpstreamTask)
-			pjob.AddTaskWithIdleTimeout(p.downstream, time.Second * 2) // client connection timeout
+			pjob.AddTaskWithIdleTimeout(p.downstream, time.Second * 60) // client connection timeout
 			pjob.AddTask(p.upstream)
 			<-pjob.RunInBackground()
 
-			go func() {
-				for {
+			//go func() {
+			//	for {
 					select {
 					case <- pjob.GetDoneChan():
 						_, err := pjob.GetInterruptedBy()
@@ -121,8 +122,11 @@ func (b Balancer) LoadBalance(j job.Job) (job.Init, job.Run, job.Finalize) {
 						j.Finish()
 						return
 					}
-				}
-			}()
+					task.Done()
+				//}
+			//}()
+		default:
+			task.Tick()
 		}
 	}
 	return init, run, nil

@@ -23,9 +23,11 @@ func execInParallel(f func() job.Job, N int) {
 		wg.Add(1)
 		go func() {
 			job := f()
+			time.Sleep(time.Millisecond * 100)
 			select {
 			case <- job.Run():
-				job.Log(0) <- fmt.Sprintf("#%d job is %s", jobCounter+1, job.GetState())
+				_, err := job.GetInterruptedBy()
+				job.Log(1) <- fmt.Sprintf("#%d job is %s, error: %v", jobCounter+1, job.GetState(), err)
 				jobCounter++
 				wg.Done()
 				return
@@ -40,13 +42,14 @@ func resizeImages(mngr netmanager.ConnManager) {
 	for i := 0; i < MainOptions.Times; i++ {
 		f := func() job.Job {
 			imgResizer := frontend.NewImageResizer(MainOptions.ImgDir, MainOptions.OutputDir,
-				MainOptions.Width, MainOptions.Height)
+				MainOptions.Width, MainOptions.Height, MainOptions.DryRun)
 			j := job.NewJob(nil)
 			j.AddOneshotTask(mngr.ConnectTask)
 			j.AddTask(netmanager.ReadTask)
 			j.AddTask(netmanager.WriteTask)
 			j.AddTask(imgResizer.ScanForImagesTask)
-			j.AddTaskWithIdleTimeout(imgResizer.SaveResizedImageTask, time.Second * 1)
+			j.AddTask(imgResizer.SaveResizedImageTask)
+			//j.AddTaskWithIdleTimeout(imgResizer.SaveResizedImageTask, time.Second * 1)
 			return j
 		}
 		execInParallel(f, nConns)

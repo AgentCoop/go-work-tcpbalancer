@@ -10,46 +10,58 @@ import (
 	"image"
 	"image/jpeg"
 	"image/png"
+	"time"
 )
 
-func resizeImage(t job.Task, req *r.Request, stream netmanager.Stream) {
-	result := &r.Response{}
-	buf := bytes.NewBuffer(req.ImgData)
+type ResizerOptions struct { }
+
+func resizeImage(t job.Task, imgData []byte, typ r.ImgType, w uint, h uint) []byte {
+	buf := bytes.NewBuffer(imgData)
 	img, _, err := image.Decode(buf)
 	t.Assert(err)
 
-	m := resize.Resize(req.TargetWidth, req.TargetHeight, img, resize.Lanczos3)
-	switch req.Typ {
+	m := resize.Resize(w, h, img, resize.Lanczos3)
+	switch typ {
 	case r.Jpeg:
 		jpeg.Encode(buf, m, nil)
 	case r.Png:
 		png.Encode(buf, m)
 	}
 
-	result.ImgData = buf.Bytes()
-	result.Typ = req.Typ
-	result.OriginalName = req.OriginalName
-	result.ResizedWidth = req.TargetWidth
-	result.ResizedHeight = req.TargetHeight
-
-	stream.Write() <- result
-	stream.WriteSync()
+	return buf.Bytes()
 }
 
-func ResizeImageTask(j job.Job) (job.Init, job.Run, job.Finalize) {
+func (o *ResizerOptions) ResizeImageTask(j job.Job) (job.Init, job.Run, job.Finalize) {
 	run := func(task job.Task) {
 		stream := j.GetValue().(netmanager.Stream)
 		select {
 		case frame := <-stream.RecvDataFrame():
-			payload := &r.Request{}
-			err := frame.Decode(payload)
+			task.AssertNotNil(frame)
+			req := &r.Request{}
+			resp := &r.Response{}
+			resp.CreatedAt = time.Now().UnixNano()
+			err := frame.Decode(req)
 			task.Assert(err)
 
-			resizeImage(task, payload, stream)
+			resp.Typ = req.Typ
+			resp.ResizedWidth = req.TargetWidth
+			resp.ResizedHeight = req.TargetHeight
+			resp.OriginalName = req.OriginalName
+			resp.ImgIndex = req.ImgIndex
+
+			if ! req.DryRun {
+				start := time.Now().UnixNano()
+				resp.ImgData = resizeImage(task, req.ImgData, req.Typ, req.TargetWidth, req.TargetHeight)
+				end := time.Now().UnixNano()
+				resp.ProcessingTime = end - start
+			}
+
+			j.Log(1) <- fmt.Sprintf("%s", resp.OriginalName)
+//time.Sleep(time.Millisecond * 500)
+			stream.Write() <- resp
+			stream.WriteSync()
 			stream.RecvDataFrameSync()
-		//default:
 		}
-		//j.Finish()
 		task.Tick()
 	}
 	return nil, run, func(task job.Task) {

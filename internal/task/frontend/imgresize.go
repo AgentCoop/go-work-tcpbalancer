@@ -7,6 +7,9 @@ import (
 	"github.com/AgentCoop/net-manager"
 	"io/ioutil"
 	"mime"
+	"time"
+
+	//"math/rand"
 	"os"
 	"path/filepath"
 )
@@ -16,14 +19,18 @@ type ImageResizer struct {
 	outputDir string
 	w uint
 	h uint
+	scanneridx int
+	dryRun bool
+	filescount int
 }
 
-func NewImageResizer(input string, output string, w uint, h uint) *ImageResizer {
+func NewImageResizer(input string, output string, w uint, h uint, dryRun bool) *ImageResizer {
 	s := &ImageResizer{
 		inputDir:  input,
 		outputDir: output,
 		w: w,
 		h: h,
+		dryRun: dryRun,
 	}
 	return s
 }
@@ -42,24 +49,34 @@ func (s *ImageResizer) SaveResizedImageTask(j job.Job) (job.Init, job.Run, job.F
 	run := func(task job.Task) {
 		stream := j.GetValue().(netmanager.Stream)
 		select {
-		case dataFrame := <-stream.RecvDataFrame():
-			if dataFrame == nil {
-				fmt.Printf(" -->>>  nil data frame\n")
-			}
+		case frame := <-stream.RecvDataFrame():
+			task.AssertNotNil(frame)
 			res := &imgresize.Response{}
-			err := dataFrame.Decode(res)
+			err := frame.Decode(res)
 			task.Assert(err)
 
 			baseName := fmt.Sprintf("%s-%dx%d%s",
 				res.OriginalName, res.ResizedWidth, res.ResizedHeight, res.Typ.ToFileExt())
 			filename := s.outputDir + string(os.PathSeparator) + baseName
-			ioutil.WriteFile(filename, res.ImgData, 0775)
-			stream.RecvDataFrameSync()
+			if ! s.dryRun {
+				ioutil.WriteFile(filename, res.ImgData, 0775)
+			}
 
 			j.Log(1) <- fmt.Sprintf("[ save-task ]: file %s has been saved\n", filename)
-			task.Tick()
-		default:
-			task.Idle()
+			stream.RecvDataFrameSync()
+
+			fmt.Printf("%d %d\n", res.ImgIndex, s.filescount)
+
+			if res.ImgIndex == s.filescount - 1 {
+				fmt.Printf("finish\n")
+				//task.Done()
+				j.Finish()
+			} else {
+				task.Tick()
+			}
+		//default:
+			//fmt.Printf("idle")
+		//	task.Idle()
 		}
 	}
 	return init, run, nil
@@ -68,12 +85,13 @@ func (s *ImageResizer) SaveResizedImageTask(j job.Job) (job.Init, job.Run, job.F
 // Scans the given directory for images to resize.
 func (s *ImageResizer) ScanForImagesTask(j job.Job) (job.Init, job.Run, job.Finalize) {
 	init := func(task job.Task) {
-		task.SetResult(0) // scanned images counter
+		s.scanneridx = task.GetIndex()
 	}
 	run := func(task job.Task) {
 		req := &imgresize.Request{}
 		req.TargetWidth = s.w
 		req.TargetHeight = s.h
+		req.DryRun = s.dryRun
 		filepath.Walk(s.inputDir, func(path string, info os.FileInfo, err error) error {
 			task.Assert(err)
 			stream := j.GetValue().(netmanager.Stream)
@@ -89,12 +107,19 @@ func (s *ImageResizer) ScanForImagesTask(j job.Job) (job.Init, job.Run, job.Fina
 				return nil
 			}
 
-			data, err := ioutil.ReadFile(path)
-			task.Assert(err)
-			req.ImgData = data
+			if ! s.dryRun {
+				data, err := ioutil.ReadFile(path)
+				task.Assert(err)
+				req.ImgData = data
+			}
+
+			req.ImgIndex = s.filescount
+			s.filescount++
 
 			stream.Write() <- req
 			stream.WriteSync()
+
+			time.Sleep(time.Millisecond * 0)
 
 			j.Log(1) <- fmt.Sprintf("[ scanner-task ]: image file %s dispatched for resizing\n", path)
 			return nil

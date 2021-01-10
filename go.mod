@@ -2,11 +2,11 @@ module github.com/AgentCoop/go-work-tcpbalancer
 
 go 1.15
 
-//replace github.com/AgentCoop/go-work => /home/pihpah/go/src/github.com/AgentCoop/go-work
+replace github.com/AgentCoop/go-work => /home/pihpah/go/src/github.com/AgentCoop/go-work
 
-//replace github.com/AgentCoop/net-dataframe => /home/pihpah/go/src/github.com/AgentCoop/net-dataframe
+replace github.com/AgentCoop/net-dataframe => /home/pihpah/go/src/github.com/AgentCoop/net-dataframe
 
-//replace github.com/AgentCoop/net-manager => /home/pihpah/go/src/github.com/AgentCoop/net-manager
+replace github.com/AgentCoop/net-manager => /home/pihpah/go/src/github.com/AgentCoop/net-manager
 
 require (
 	github.com/AgentCoop/go-work v0.0.0-20210108092145-d4953f15de34

@@ -23,17 +23,17 @@ func runLoadBalancer(connMngr netmanager.ConnManager) {
 	}
 
 	for {
-		job := job.NewJob(nil)
-		job.AddOneshotTask(connMngr.AcceptTask)
-		job.AddTask(balancer.LoadBalance)
-		<-job.RunInBackground()
+		balancerJob := job.NewJob(nil)
+		balancerJob.AddOneshotTask(connMngr.AcceptTask)
+		balancerJob.AddTask(balancer.LoadBalance)
+		<-balancerJob.RunInBackground()
 
 		go func() {
 			for {
 				select {
-				case <- job.GetDoneChan():
-					_, err := job.GetInterruptedBy()
-					job.Log(0) <- fmt.Sprintf("job is %s, error %s",  job.GetState(), err)
+				case <- balancerJob.GetDoneChan():
+					_, err := balancerJob.GetInterruptedBy()
+					balancerJob.Log(0) <- fmt.Sprintf("job is %s, error %s",  balancerJob.GetState(), err)
 					return
 				}
 			}

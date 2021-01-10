@@ -24,10 +24,16 @@ type Request struct {
 	ImgInfo
 	TargetWidth uint
 	TargetHeight uint
+	CreatedAt int64
+	ImgIndex int
+	DryRun bool
 }
 
 type Response struct {
 	ImgInfo
 	ResizedWidth uint
 	ResizedHeight uint
+	ProcessingTime int64
+	CreatedAt int64
+	ImgIndex int
 }

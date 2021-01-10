@@ -14,6 +14,7 @@ var MainOptions struct {
 	Width uint `short:"w" required:"true"`
 	Height uint `short:"h" required:"true"`
 	Times int `long:"times"`
+	DryRun bool `long:"dry-run"`
 }
 
 func newParser(data interface{}) *flags.Parser {
