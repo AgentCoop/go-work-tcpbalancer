@@ -68,14 +68,11 @@ func (s *ImageResizer) SaveResizedImageTask(j job.Job) (job.Init, job.Run, job.F
 			fmt.Printf("%d %d\n", res.ImgIndex, s.filescount)
 
 			if res.ImgIndex == s.filescount - 1 {
-				fmt.Printf("finish\n")
-				//task.Done()
 				j.Finish()
 			} else {
 				task.Tick()
 			}
 		//default:
-			//fmt.Printf("idle")
 		//	task.Idle()
 		}
 	}
@@ -119,8 +116,8 @@ func (s *ImageResizer) ScanForImagesTask(j job.Job) (job.Init, job.Run, job.Fina
 			stream.Write() <- req
 			stream.WriteSync()
 
-			time.Sleep(time.Millisecond * 0)
-
+			time.Sleep(time.Millisecond * 10)
+			//fmt.Printf("[ scanner-task ]: image file %s dispatched for resizing\n", path)
 			j.Log(1) <- fmt.Sprintf("[ scanner-task ]: image file %s dispatched for resizing\n", path)
 			return nil
 		})

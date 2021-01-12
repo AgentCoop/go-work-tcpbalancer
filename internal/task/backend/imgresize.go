@@ -56,8 +56,8 @@ func (o *ResizerOptions) ResizeImageTask(j job.Job) (job.Init, job.Run, job.Fina
 				resp.ProcessingTime = end - start
 			}
 
-			j.Log(1) <- fmt.Sprintf("%s", resp.OriginalName)
-//time.Sleep(time.Millisecond * 500)
+			j.Log(1) <- fmt.Sprintf("image %s has been resized", resp.OriginalName)
+
 			stream.Write() <- resp
 			stream.WriteSync()
 			stream.RecvDataFrameSync()

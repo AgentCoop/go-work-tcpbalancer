@@ -11,7 +11,6 @@ import (
 	_ "net/http/pprof"
 	"runtime"
 	"sync"
-	"time"
 )
 
 var jobCounter int
@@ -23,7 +22,7 @@ func execInParallel(f func() job.Job, N int) {
 		wg.Add(1)
 		go func() {
 			job := f()
-			time.Sleep(time.Millisecond * 100)
+			//time.Sleep(time.Millisecond * 100)
 			select {
 			case <- job.Run():
 				_, err := job.GetInterruptedBy()
@@ -68,7 +67,9 @@ func main() {
 	initLogger()
 
 	netMngr := netmanager.NewNetworkManager()
-	connMngr := netMngr.NewConnManager("tcp4", MainOptions.ProxyHost, nil)
+	opts := &netmanager.ConnManagerOptions{}
+	opts.ReadbufLen = 20000
+	connMngr := netMngr.NewConnManager("tcp4", MainOptions.ProxyHost, opts)
 
 	runtime.SetBlockProfileRate(6)
 	go func() {

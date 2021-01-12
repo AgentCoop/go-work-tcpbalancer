@@ -13,7 +13,7 @@ var CliOptions struct {
 	LogLevel int `long:"loglevel"`
 }
 
-func ParseCliOptions() {
+func parseCliOptions() {
 	parser := flags.NewParser(&CliOptions, flags.PassDoubleDash | flags.PrintErrors | flags.IgnoreUnknown)
 	_, err := parser.ParseArgs(os.Args)
 	if err != nil { panic(err) }

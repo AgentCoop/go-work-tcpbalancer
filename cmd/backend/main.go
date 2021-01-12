@@ -23,7 +23,7 @@ func startImgServer(connManager netmanager.ConnManager) {
 		mainJob := job.NewJob(opts)
 		mainJob.AddOneshotTask(connManager.AcceptTask)
 		mainJob.AddTask(netmanager.ReadTask)
-		//mainJob.AddTaskWithIdleTimeout(netmanager.ReadTask, time.Second * 12)
+		//mainJob.AddTaskWithIdleTimeout(netmanager.ReadTask, time.Second * 2)
 		mainJob.AddTask(netmanager.WriteTask)
 		mainJob.AddTask(opts.ResizeImageTask)
 		<-mainJob.RunInBackground()
@@ -45,38 +45,13 @@ func startImgServer(connManager netmanager.ConnManager) {
 }
 
 func main() {
-	ParseCliOptions()
-
-	//if CliOptions.CpuProfile != "" {
-	//	fmt.Println(CliOptions.CpuProfile)
-	//	f, err := os.Create(CliOptions.CpuProfile)
-	//	if err != nil {
-	//		log.Fatal(err)
-	//	}
-	//	runtime.SetCPUProfileRate(100)
-	//	pprof.StartCPUProfile(f)
-	//	defer pprof.StopCPUProfile()
-	//}
-
-	// Set up logger
-	job.DefaultLogLevel = CliOptions.LogLevel
-	job.RegisterDefaultLogger(func() job.LogLevelMap {
-		m := make(job.LogLevelMap, 3)
-		handler := func(record interface{}, level int) {
-			prefix := fmt.Sprintf(" 💻[ %s ] ", CliOptions.Name) +
-				strings.Repeat("☞ ", level)
-			fmt.Printf("%s%s\n", prefix, record.(string))
-		}
-		m[0] = job.NewLogLevelMapItem(make(chan interface{}), handler)
-		m[1] = job.NewLogLevelMapItem(make(chan interface{}), handler)
-		m[2] = job.NewLogLevelMapItem(make(chan interface{}), handler)
-		return m
-	})
+	parseCliOptions()
+	initLogger()
 
 	netMngr := netmanager.NewNetworkManager()
 	localAddr := CliOptions.Name + ":" + strconv.Itoa(CliOptions.Port)
 	opts := &netmanager.ConnManagerOptions{}
-	opts.ReadbufLen = 4096
+	opts.ReadbufLen = 60_000
 	connMngr := netMngr.NewConnManager("tcp4", localAddr, opts)
 	//_ = connMngr
 	go startImgServer(connMngr)
