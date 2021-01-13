@@ -32,16 +32,24 @@ func resizeImage(t job.Task, imgData []byte, typ r.ImgType, w uint, h uint) []by
 }
 
 func (o *ResizerOptions) ResizeImageTask(j job.Job) (job.Init, job.Run, job.Finalize) {
+	//init := func(task job.Task) {
+	//	stream := j.GetValue().(netmanager.Stream)
+	//	stream.GetState()
+	//}
 	run := func(task job.Task) {
 		stream := j.GetValue().(netmanager.Stream)
+		fmt.Printf("read frame\n")
 		select {
 		case frame := <-stream.RecvDataFrame():
+			fmt.Printf("got frame\n")
 			task.AssertNotNil(frame)
 			req := &r.Request{}
 			resp := &r.Response{}
 			resp.CreatedAt = time.Now().UnixNano()
 			err := frame.Decode(req)
 			task.Assert(err)
+
+			//stream.RecvDataFrameSync()
 
 			resp.Typ = req.Typ
 			resp.ResizedWidth = req.TargetWidth
@@ -61,7 +69,11 @@ func (o *ResizerOptions) ResizeImageTask(j job.Job) (job.Init, job.Run, job.Fina
 			stream.Write() <- resp
 			stream.WriteSync()
 			stream.RecvDataFrameSync()
+		//default:
+		//	task.Idle()
+		//	return
 		}
+		fmt.Printf("t")
 		task.Tick()
 	}
 	return nil, run, func(task job.Task) {

@@ -51,7 +51,7 @@ func main() {
 	netMngr := netmanager.NewNetworkManager()
 	localAddr := CliOptions.Name + ":" + strconv.Itoa(CliOptions.Port)
 	opts := &netmanager.ConnManagerOptions{}
-	opts.ReadbufLen = 60_000
+	opts.ReadbufLen = 600000
 	connMngr := netMngr.NewConnManager("tcp4", localAddr, opts)
 	//_ = connMngr
 	go startImgServer(connMngr)

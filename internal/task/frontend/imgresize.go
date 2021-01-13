@@ -7,9 +7,8 @@ import (
 	"github.com/AgentCoop/net-manager"
 	"io/ioutil"
 	"mime"
+	"sync"
 	"time"
-
-	//"math/rand"
 	"os"
 	"path/filepath"
 )
@@ -21,7 +20,12 @@ type ImageResizer struct {
 	h uint
 	scanneridx int
 	dryRun bool
+	countmux	sync.RWMutex
 	filescount int
+	sentx int
+	recvx int
+	scandone bool
+
 }
 
 func NewImageResizer(input string, output string, w uint, h uint, dryRun bool) *ImageResizer {
@@ -49,6 +53,11 @@ func (s *ImageResizer) SaveResizedImageTask(j job.Job) (job.Init, job.Run, job.F
 	run := func(task job.Task) {
 		stream := j.GetValue().(netmanager.Stream)
 		select {
+		case finishedTask := <- j.TaskDoneNotify():
+			if finishedTask.GetIndex() == s.scanneridx {
+				s.scandone = true
+			}
+			task.Tick()
 		case frame := <-stream.RecvDataFrame():
 			task.AssertNotNil(frame)
 			res := &imgresize.Response{}
@@ -64,16 +73,15 @@ func (s *ImageResizer) SaveResizedImageTask(j job.Job) (job.Init, job.Run, job.F
 
 			j.Log(1) <- fmt.Sprintf("[ save-task ]: file %s has been saved\n", filename)
 			stream.RecvDataFrameSync()
-
-			fmt.Printf("%d %d\n", res.ImgIndex, s.filescount)
-
-			if res.ImgIndex == s.filescount - 1 {
-				j.Finish()
-			} else {
-				task.Tick()
+			s.recvx++
+			task.Tick()
+		default:
+			switch {
+			case s.scandone && s.recvx == s.sentx:
+				task.FinishJob()
+			default:
+				task.Idle()
 			}
-		//default:
-		//	task.Idle()
 		}
 	}
 	return init, run, nil
@@ -85,14 +93,14 @@ func (s *ImageResizer) ScanForImagesTask(j job.Job) (job.Init, job.Run, job.Fina
 		s.scanneridx = task.GetIndex()
 	}
 	run := func(task job.Task) {
-		req := &imgresize.Request{}
-		req.TargetWidth = s.w
-		req.TargetHeight = s.h
-		req.DryRun = s.dryRun
 		filepath.Walk(s.inputDir, func(path string, info os.FileInfo, err error) error {
 			task.Assert(err)
 			stream := j.GetValue().(netmanager.Stream)
 
+			req := &imgresize.Request{}
+			req.TargetWidth = s.w
+			req.TargetHeight = s.h
+			req.DryRun = s.dryRun
 			req.OriginalName = info.Name()
 			fileExt := filepath.Ext(info.Name())
 			switch mime.TypeByExtension(fileExt) {
@@ -111,13 +119,15 @@ func (s *ImageResizer) ScanForImagesTask(j job.Job) (job.Init, job.Run, job.Fina
 			}
 
 			req.ImgIndex = s.filescount
+			s.countmux.Lock()
 			s.filescount++
+			s.countmux.Unlock()
 
+			time.Sleep(time.Millisecond * 0)
+			s.sentx++
 			stream.Write() <- req
 			stream.WriteSync()
 
-			time.Sleep(time.Millisecond * 10)
-			//fmt.Printf("[ scanner-task ]: image file %s dispatched for resizing\n", path)
 			j.Log(1) <- fmt.Sprintf("[ scanner-task ]: image file %s dispatched for resizing\n", path)
 			return nil
 		})
