@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-var MainOptions struct {
+var CliOptions struct {
 	ProxyHost string `long:"proxy" required:"true"`
 	LogLevel int `long:"loglevel"`
 	MaxConns int `long:"maxconns"`
@@ -16,6 +16,7 @@ var MainOptions struct {
 	Height uint `short:"h" required:"true"`
 	Times int `long:"times"`
 	DryRun bool `long:"dry-run"`
+	Debug bool `long:"debug"`
 }
 
 func newParser(data interface{}) *flags.Parser {
@@ -24,11 +25,11 @@ func newParser(data interface{}) *flags.Parser {
 }
 
 func ParseCliOptions() {
-	parser := newParser(&MainOptions)
+	parser := newParser(&CliOptions)
 	_, err := parser.ParseArgs(os.Args)
 	if err != nil { panic(err) }
 
-	if MainOptions.MaxConns == 0 { MainOptions.MaxConns = 1 }
-	if MainOptions.MinConns == 0 { MainOptions.MinConns = 1 }
-	if MainOptions.Times == 0 { MainOptions.Times = 1 }
+	if CliOptions.MaxConns == 0 { CliOptions.MaxConns = 1 }
+	if CliOptions.MinConns == 0 { CliOptions.MinConns = 1 }
+	if CliOptions.Times == 0 { CliOptions.Times = 1 }
 }

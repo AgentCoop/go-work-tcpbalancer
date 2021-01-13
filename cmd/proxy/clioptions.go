@@ -6,7 +6,7 @@ import (
 )
 
 var CliOptions struct {
-	Port int `short:"p" description:"Listens on a port for inbound connections"`
+	Port int `long:"port" short:"p" required:"true"`
 	UpstreamServers []string `short:"u" description:"Upstream servers"`
 	LogLevel int `long:"loglevel"`
 	MaxClientConns int `long:"maxconns"`

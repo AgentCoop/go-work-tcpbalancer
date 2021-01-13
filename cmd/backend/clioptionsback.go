@@ -8,7 +8,6 @@ import (
 var CliOptions struct {
 	Port int `long:"port" short:"p" required:"true"`
 	Name string `long:"name" required:"true" description:"Server name"`
-	CpuProfile string `long:"cpuprofile"`
 	Debug bool `long:"debug"`
 	LogLevel int `long:"loglevel"`
 }

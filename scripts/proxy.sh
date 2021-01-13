@@ -8,4 +8,5 @@ go build -o /opt/proxy ./cmd/proxy/*.go
   -u backend-1:9090 \
   -u backend-2:9090 \
   -u backend-3:9090 \
-  --loglevel=2
+  --loglevel=1      \
+  --maxconns=10

@@ -7,8 +7,6 @@ services:
       dockerfile: ./cmd/proxy/Dockerfile
     volumes:
       - .:/src
-    ports:
-      - 9090:9090
     depends_on:
       - backend-1
       - backend-2
@@ -47,5 +45,6 @@ services:
       dockerfile: ./cmd/frontend/Dockerfile
     volumes:
       - .:/src
+      - ./samples:/imgresized
     depends_on:
       - proxy-server

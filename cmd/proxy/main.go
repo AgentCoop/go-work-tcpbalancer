@@ -46,7 +46,7 @@ func main() {
 	initLogger()
 
 	netMngr := netmanager.NewNetworkManager()
-	localAddr := "localhost:" + strconv.Itoa(CliOptions.Port)
+	localAddr := ":" + strconv.Itoa(CliOptions.Port)
 	opts := &netmanager.ConnManagerOptions{}
 	opts.ReadbufLen = 256_00
 	opts.InboundLimit = CliOptions.MaxClientConns

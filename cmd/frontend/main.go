@@ -31,7 +31,7 @@ func execInParallel(f func() job.Job, N int32) {
 			select {
 			case <- job.Run():
 				_, err := job.GetInterruptedBy()
-				if err != nil && MainOptions.LogLevel == 0 { panic(err) }
+				if err != nil && CliOptions.LogLevel == 0 { panic(err) }
 
 				counterMu.RLock()
 				job.Log(1) <- fmt.Sprintf("#%d job is %s, error '%v'", jobCounter+1, job.GetState(), err)
@@ -50,17 +50,17 @@ func execInParallel(f func() job.Job, N int32) {
 }
 
 func resizeImages(mngr netmanager.ConnManager) {
-	min, max := int32(MainOptions.MinConns), int32(MainOptions.MaxConns)
+	min, max := int32(CliOptions.MinConns), int32(CliOptions.MaxConns)
 	var nConns int32
-	if max <= min {
-		nConns = min
-	} else {
-		nConns = rand.Int31n(max) + min
-	}
-	for i := 0; i < MainOptions.Times; i++ {
+	for i := 0; i < CliOptions.Times; i++ {
+		if max <= min {
+			nConns = min
+		} else {
+			nConns = rand.Int31n(max) + min
+		}
 		f := func() job.Job {
-			imgResizer := frontend.NewImageResizer(MainOptions.ImgDir, MainOptions.OutputDir,
-				MainOptions.Width, MainOptions.Height, MainOptions.DryRun)
+			imgResizer := frontend.NewImageResizer(CliOptions.ImgDir, CliOptions.OutputDir,
+				CliOptions.Width, CliOptions.Height, CliOptions.DryRun)
 			j := job.NewJob(nil)
 			j.AddOneshotTask(mngr.ConnectTask)
 			j.AddTask(netmanager.ReadTask)
@@ -88,16 +88,19 @@ func main() {
 	netMngr := netmanager.NewNetworkManager()
 	opts := &netmanager.ConnManagerOptions{}
 	opts.ReadbufLen = 20000
-	connMngr := netMngr.NewConnManager("tcp4", MainOptions.ProxyHost, opts)
+	connMngr := netMngr.NewConnManager("tcp4", CliOptions.ProxyHost, opts)
 
-	runtime.SetBlockProfileRate(6)
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
+	if CliOptions.Debug {
+		go func() {
+			runtime.SetBlockProfileRate(6)
+			log.Println(http.ListenAndServe("localhost:6060", nil))
+		}()
+	}
 
 	startedAt = time.Now().UnixNano()
 	resizeImages(connMngr)
 	finishedAt = time.Now().UnixNano()
 
+	time.Sleep(time.Second * 6)
 	showNetStatistics(connMngr)
 }

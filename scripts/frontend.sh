@@ -4,7 +4,7 @@ go mod tidy -v
 go build -o /opt/client ./cmd/frontend/*.go
 
 mkdir -p /img
-mkdir -p /imgresized
+rm -rf /imgresized/*.{png,jpeg,jpg}
 
 wget -O- https://pbs.twimg.com/media/DthIfUnW0AAU_x1.jpg > /img/gopher1.jpg
 wget -O- https://i.morioh.com/2020/03/24/fa7ceac4ffd5.jpg > /img/gopher2.jpg
@@ -15,4 +15,11 @@ wget -O- https://flicsdb.com/wp-content/uploads/2019/03/golang.jpeg > /img/gophe
 
 sleep 4
 
-/opt/client --proxy proxy-server:9090 --maxconns=1 --times=32 -w 80 -h 80 --input=/img --output=/imgresized
+/opt/client \
+      --proxy proxy-server:9090 \
+      --maxconns=15 \
+      --minconns=8 \
+      --times=5 \
+      -w 160 -h 160 \
+      --loglevel=1 \
+      --input=/img --output=/imgresized

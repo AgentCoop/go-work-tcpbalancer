@@ -66,7 +66,7 @@ func (s *ImageResizer) SaveResizedImageTask(j job.Job) (job.Init, job.Run, job.F
 				ioutil.WriteFile(filename, res.ImgData, 0775)
 			}
 
-			j.Log(1) <- fmt.Sprintf("[ save-task ]: file %s has been saved\n", filename)
+			j.Log(1) <- fmt.Sprintf("file %s has been saved\n", filename)
 			stream.RecvDataFrameSync()
 			s.recvx++
 			task.Tick()
@@ -117,7 +117,7 @@ func (s *ImageResizer) ScanForImagesTask(j job.Job) (job.Init, job.Run, job.Fina
 			stream.Write() <- req
 			stream.WriteSync()
 
-			j.Log(1) <- fmt.Sprintf("[ scanner-task ]: image file %s dispatched for resizing\n", path)
+			j.Log(1) <- fmt.Sprintf("image file %s dispatched for resizing\n", path)
 			return nil
 		})
 		task.Done()
