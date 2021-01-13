@@ -37,9 +37,6 @@ type proxy struct {
 }
 
 func (p *proxy) downstream(j job.Job) (job.Init, job.Run, job.Finalize) {
-	init := func(task job.Task) {
-		///p.conn.Upstream().DataKind = netmanager.DataRawKind
-	}
 	run := func(task job.Task) {
 		select {
 		case dd := <- p.conn.Downstream().RecvRaw():
@@ -52,15 +49,12 @@ func (p *proxy) downstream(j job.Job) (job.Init, job.Run, job.Finalize) {
 		}
 	}
 	fin := func(task job.Task) {
-		p.conn.Upstream().CloseWithReuse()
+		p.conn.Downstream().Close()
 	}
-	return init, run, fin
+	return nil, run, fin
 }
 
 func (p *proxy) upstream(j job.Job) (job.Init, job.Run, job.Finalize) {
-	init := func(task job.Task) {
-		//p.conn.Downstream().DataKind = netmanager.DataRawKind
-	}
 	run := func(task job.Task) {
 		select {
 		case data := <- p.conn.Upstream().RecvRaw(): // Receive data from upstream server
@@ -70,10 +64,10 @@ func (p *proxy) upstream(j job.Job) (job.Init, job.Run, job.Finalize) {
 		}
 		task.Tick()
 	}
-	return init, run, func(task job.Task) {
-		p.conn.Downstream().Close()
-		j.Log(1) <- fmt.Sprintf("close proxy conn, downstream")
+	fin := func(task job.Task) {
+		p.conn.Upstream().CloseWithReuse()
 	}
+	return nil, run, fin
 }
 
 func (p *proxy) ReadUpstreamTask(j job.Job) (job.Init, job.Run, job.Finalize) {
@@ -94,9 +88,7 @@ func (b Balancer) LoadBalance(j job.Job) (job.Init, job.Run, job.Finalize) {
 		clientConn := j.GetValue().(netmanager.Stream)
 		select {
 		case <- clientConn.NewConn():
-			j.Log(0) <- fmt.Sprintf("new conn from %s", clientConn.String())
-			//connMngr := clientConn.GetConnManager()
-			//netMngr := connMngr.GetNetworkManager()
+			j.Log(1) <- fmt.Sprintf("conn from %s", clientConn.String())
 
 			upstreamSrv := b.SelectRandom()
 			proxyConn := netmanager.NewProxyConn(upstreamSrv, clientConn)
@@ -109,22 +101,18 @@ func (b Balancer) LoadBalance(j job.Job) (job.Init, job.Run, job.Finalize) {
 			pjob.AddTask(p.conn.ProxyReadUpstreamTask)
 			pjob.AddTask(p.conn.ProxyWriteDownstreamTask)
 			pjob.AddTask(p.conn.ProxyWriteUpstreamTask)
-			pjob.AddTaskWithIdleTimeout(p.downstream, time.Second * 60) // client connection timeout
+			pjob.AddTaskWithIdleTimeout(p.downstream, time.Second * 2) // client connection timeout
 			pjob.AddTask(p.upstream)
 			<-pjob.RunInBackground()
 
-			//go func() {
-			//	for {
-					select {
-					case <- pjob.GetDoneChan():
-						_, err := pjob.GetInterruptedBy()
-						pjob.Log(0) <- fmt.Sprintf("proxy conn job is %s, error %s", pjob.GetState(), err)
-						j.Finish()
-						return
-					}
-					task.Done()
-				//}
-			//}()
+			select {
+			case <- pjob.GetDoneChan():
+				_, err := pjob.GetInterruptedBy()
+				pjob.Log(2) <- fmt.Sprintf("proxy conn job is %s, error %s", pjob.GetState(), err)
+				j.Finish()
+				return
+			}
+			task.Done()
 		default:
 			task.Tick()
 		}

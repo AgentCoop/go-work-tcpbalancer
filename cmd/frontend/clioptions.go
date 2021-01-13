@@ -9,6 +9,7 @@ var MainOptions struct {
 	ProxyHost string `long:"proxy" required:"true"`
 	LogLevel int `long:"loglevel"`
 	MaxConns int `long:"maxconns"`
+	MinConns int `long:"minconns"`
 	ImgDir string `long:"input" required:"true"`
 	OutputDir string `long:"output" required:"true"`
 	Width uint `short:"w" required:"true"`
@@ -28,5 +29,6 @@ func ParseCliOptions() {
 	if err != nil { panic(err) }
 
 	if MainOptions.MaxConns == 0 { MainOptions.MaxConns = 1 }
+	if MainOptions.MinConns == 0 { MainOptions.MinConns = 1 }
 	if MainOptions.Times == 0 { MainOptions.Times = 1 }
 }

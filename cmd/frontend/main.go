@@ -11,23 +11,36 @@ import (
 	_ "net/http/pprof"
 	"runtime"
 	"sync"
+	"time"
 )
 
-var jobCounter int
+var (
+	counterMu sync.RWMutex
+	jobCounter int
+	startedAt int64
+	finishedAt int64
+)
 
 // Executes the given job in parallel using N goroutines
-func execInParallel(f func() job.Job, N int) {
+func execInParallel(f func() job.Job, N int32) {
 	var wg sync.WaitGroup
-	for i := 0; i < N; i++ {
+	for i := 0; i < int(N); i++ {
 		wg.Add(1)
 		go func() {
 			job := f()
-			//time.Sleep(time.Millisecond * 100)
 			select {
 			case <- job.Run():
 				_, err := job.GetInterruptedBy()
-				job.Log(1) <- fmt.Sprintf("#%d job is %s, error: %v", jobCounter+1, job.GetState(), err)
+				if err != nil && MainOptions.LogLevel == 0 { panic(err) }
+
+				counterMu.RLock()
+				job.Log(1) <- fmt.Sprintf("#%d job is %s, error '%v'", jobCounter+1, job.GetState(), err)
+				counterMu.RUnlock()
+
+				counterMu.Lock()
 				jobCounter++
+				counterMu.Unlock()
+
 				wg.Done()
 				return
 			}
@@ -37,7 +50,13 @@ func execInParallel(f func() job.Job, N int) {
 }
 
 func resizeImages(mngr netmanager.ConnManager) {
-	nConns := int(rand.Int31n(int32(MainOptions.MaxConns))) + 1
+	min, max := int32(MainOptions.MinConns), int32(MainOptions.MaxConns)
+	var nConns int32
+	if max <= min {
+		nConns = min
+	} else {
+		nConns = rand.Int31n(max) + min
+	}
 	for i := 0; i < MainOptions.Times; i++ {
 		f := func() job.Job {
 			imgResizer := frontend.NewImageResizer(MainOptions.ImgDir, MainOptions.OutputDir,
@@ -47,20 +66,20 @@ func resizeImages(mngr netmanager.ConnManager) {
 			j.AddTask(netmanager.ReadTask)
 			j.AddTask(netmanager.WriteTask)
 			j.AddTask(imgResizer.ScanForImagesTask)
-			j.AddTask(imgResizer.SaveResizedImageTask)
-			//j.AddTaskWithIdleTimeout(imgResizer.SaveResizedImageTask, time.Second * 1)
+			j.AddTaskWithIdleTimeout(imgResizer.SaveResizedImageTask, time.Second * 8)
 			return j
 		}
 		execInParallel(f, nConns)
 	}
 }
 
-//func showNetStatistics(manager n.ConnManager) {
-//	fmt.Printf("-- [ Network Statistics ] --\n")
-//	fmt.Printf("\tbytes sent: %0.2f Mb\n", float64(manager.GetBytesSent()) / 1e6)
-//	fmt.Printf("\tbytes received: %0.2f Mb\n", float64(manager.GetBytesReceived()) / 1e6)
-//}
-//var counter int
+func showNetStatistics(connMngr netmanager.ConnManager) {
+	fmt.Printf("-- [ Network Statistics ] --\n")
+	fmt.Printf("\tbytes sent: %0.2f Mb\n", float64(connMngr.GetBytesSent()) / 1e6)
+	fmt.Printf("\tbytes received: %0.2f Mb\n", float64(connMngr.GetBytesReceived()) / 1e6)
+	rps := float64(time.Duration(jobCounter) * time.Second) / float64(finishedAt - startedAt)
+	fmt.Printf("\tRequests Per Second: %0.2f\n", rps)
+}
 
 func main() {
 	ParseCliOptions()
@@ -76,7 +95,9 @@ func main() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
 
+	startedAt = time.Now().UnixNano()
 	resizeImages(connMngr)
+	finishedAt = time.Now().UnixNano()
 
-	//showNetStatistics(connManager)
+	showNetStatistics(connMngr)
 }

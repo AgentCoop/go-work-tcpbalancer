@@ -19,11 +19,9 @@ var counter int
 func startImgServer(connManager netmanager.ConnManager) {
 	opts := &t.ResizerOptions{}
 	for {
-		fmt.Printf("new conn\n")
 		mainJob := job.NewJob(opts)
 		mainJob.AddOneshotTask(connManager.AcceptTask)
-		mainJob.AddTask(netmanager.ReadTask)
-		//mainJob.AddTaskWithIdleTimeout(netmanager.ReadTask, time.Second * 2)
+		mainJob.AddTaskWithIdleTimeout(netmanager.ReadTask, time.Second * 2)
 		mainJob.AddTask(netmanager.WriteTask)
 		mainJob.AddTask(opts.ResizeImageTask)
 		<-mainJob.RunInBackground()

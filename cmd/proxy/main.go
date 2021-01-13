@@ -33,7 +33,7 @@ func runLoadBalancer(connMngr netmanager.ConnManager) {
 				select {
 				case <- balancerJob.GetDoneChan():
 					_, err := balancerJob.GetInterruptedBy()
-					balancerJob.Log(0) <- fmt.Sprintf("job is %s, error %s",  balancerJob.GetState(), err)
+					balancerJob.Log(2) <- fmt.Sprintf("job is %s, error '%v'",  balancerJob.GetState(), err)
 					return
 				}
 			}
@@ -55,9 +55,11 @@ func main() {
 	go runLoadBalancer(connMngr)
 	fmt.Printf(" 🌎[ proxy server ] is listening on port %d\n", CliOptions.Port)
 
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6062", nil))
-	}()
+	if CliOptions.Debug {
+		go func() {
+			log.Println(http.ListenAndServe("localhost:6062", nil))
+		}()
+	}
 
 	for {
 		time.Sleep(time.Second)

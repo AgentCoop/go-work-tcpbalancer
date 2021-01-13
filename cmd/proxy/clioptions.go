@@ -10,6 +10,7 @@ var CliOptions struct {
 	UpstreamServers []string `short:"u" description:"Upstream servers"`
 	LogLevel int `long:"loglevel"`
 	MaxClientConns int `long:"maxconns"`
+	Debug bool `long:"debug"`
 }
 
 func newParser(data interface{}) *flags.Parser {
