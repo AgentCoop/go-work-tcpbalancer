@@ -7,8 +7,6 @@ import (
 	"github.com/AgentCoop/net-manager"
 	"io/ioutil"
 	"mime"
-	"sync"
-	"time"
 	"os"
 	"path/filepath"
 )
@@ -20,12 +18,9 @@ type ImageResizer struct {
 	h uint
 	scanneridx int
 	dryRun bool
-	countmux	sync.RWMutex
-	filescount int
-	sentx int
-	recvx int
+	sentx int // number of files sent for resizing
+	recvx int // number of resized files received
 	scandone bool
-
 }
 
 func NewImageResizer(input string, output string, w uint, h uint, dryRun bool) *ImageResizer {
@@ -118,12 +113,6 @@ func (s *ImageResizer) ScanForImagesTask(j job.Job) (job.Init, job.Run, job.Fina
 				req.ImgData = data
 			}
 
-			req.ImgIndex = s.filescount
-			s.countmux.Lock()
-			s.filescount++
-			s.countmux.Unlock()
-
-			time.Sleep(time.Millisecond * 0)
 			s.sentx++
 			stream.Write() <- req
 			stream.WriteSync()

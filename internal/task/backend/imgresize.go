@@ -32,16 +32,10 @@ func resizeImage(t job.Task, imgData []byte, typ r.ImgType, w uint, h uint) []by
 }
 
 func (o *ResizerOptions) ResizeImageTask(j job.Job) (job.Init, job.Run, job.Finalize) {
-	//init := func(task job.Task) {
-	//	stream := j.GetValue().(netmanager.Stream)
-	//	stream.GetState()
-	//}
 	run := func(task job.Task) {
 		stream := j.GetValue().(netmanager.Stream)
-		fmt.Printf("read frame\n")
 		select {
 		case frame := <-stream.RecvDataFrame():
-			fmt.Printf("got frame\n")
 			task.AssertNotNil(frame)
 			req := &r.Request{}
 			resp := &r.Response{}
@@ -49,13 +43,10 @@ func (o *ResizerOptions) ResizeImageTask(j job.Job) (job.Init, job.Run, job.Fina
 			err := frame.Decode(req)
 			task.Assert(err)
 
-			//stream.RecvDataFrameSync()
-
 			resp.Typ = req.Typ
 			resp.ResizedWidth = req.TargetWidth
 			resp.ResizedHeight = req.TargetHeight
 			resp.OriginalName = req.OriginalName
-			resp.ImgIndex = req.ImgIndex
 
 			if ! req.DryRun {
 				start := time.Now().UnixNano()
@@ -73,11 +64,7 @@ func (o *ResizerOptions) ResizeImageTask(j job.Job) (job.Init, job.Run, job.Fina
 		//	task.Idle()
 		//	return
 		}
-		fmt.Printf("t")
 		task.Tick()
 	}
-	return nil, run, func(task job.Task) {
-		_, err := task.GetJob().GetInterruptedBy()
-		fmt.Printf("close by %s\n", err)
-	}
+	return nil, run, nil
 }
