@@ -3,7 +3,7 @@ package frontend
 import (
 	"fmt"
 	job "github.com/AgentCoop/go-work"
-	"github.com/AgentCoop/go-work-tcpbalancer/internal/common/imgresize"
+	"github.com/AgentCoop/go-work-tcpbalancer/internal/imgresize"
 	"github.com/AgentCoop/net-manager"
 	"io/ioutil"
 	"mime"
@@ -36,6 +36,7 @@ func NewImageResizer(input string, output string, w uint, h uint, dryRun bool) *
 
 // Saves resized image to the output dir
 func (s *ImageResizer) SaveResizedImageTask(j job.Job) (job.Init, job.Run, job.Finalize) {
+	// Do some initialization here
 	init := func(t job.Task) {
 		if _, err := os.Stat(s.inputDir); os.IsNotExist(err) {
 			t.Assert(err)
@@ -48,12 +49,12 @@ func (s *ImageResizer) SaveResizedImageTask(j job.Job) (job.Init, job.Run, job.F
 	run := func(task job.Task) {
 		stream := j.GetValue().(netmanager.Stream)
 		select {
-		case finishedTask := <- j.TaskDoneNotify():
+		case finishedTask := <- j.TaskDoneNotify(): // Wait for the scanner task to be done
 			if finishedTask.GetIndex() == s.scanneridx {
 				s.scandone = true
 			}
 			task.Tick()
-		case frame := <-stream.RecvDataFrame():
+		case frame := <-stream.RecvDataFrame(): // Process response from the backend server
 			task.AssertNotNil(frame)
 			res := &imgresize.Response{}
 			err := frame.Decode(res)
@@ -66,16 +67,16 @@ func (s *ImageResizer) SaveResizedImageTask(j job.Job) (job.Init, job.Run, job.F
 				ioutil.WriteFile(filename, res.ImgData, 0775)
 			}
 
-			j.Log(1) <- fmt.Sprintf("file %s has been saved\n", filename)
-			stream.RecvDataFrameSync()
+			j.Log(1) <- fmt.Sprintf("file %s has been saved", filename)
+			stream.RecvDataFrameSync() // Tell netmanager.Read that we are done processing the frame
 			s.recvx++
 			task.Tick()
 		default:
 			switch {
-			case s.scandone && s.recvx == s.sentx:
+			case s.scandone && s.recvx == s.sentx: // Check if all found images were processed
 				task.FinishJob()
 			default:
-				task.Idle()
+				task.Idle() // Do nothing
 			}
 		}
 	}
@@ -117,7 +118,7 @@ func (s *ImageResizer) ScanForImagesTask(j job.Job) (job.Init, job.Run, job.Fina
 			stream.Write() <- req
 			stream.WriteSync()
 
-			j.Log(1) <- fmt.Sprintf("image file %s dispatched for resizing\n", path)
+			j.Log(1) <- fmt.Sprintf("image file %s dispatched for resizing", path)
 			return nil
 		})
 		task.Done()

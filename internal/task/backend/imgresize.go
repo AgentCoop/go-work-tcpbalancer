@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/AgentCoop/go-work"
-	r "github.com/AgentCoop/go-work-tcpbalancer/internal/common/imgresize"
+	r "github.com/AgentCoop/go-work-tcpbalancer/internal/imgresize"
 	"github.com/AgentCoop/net-manager"
 	"github.com/nfnt/resize"
 	"image"

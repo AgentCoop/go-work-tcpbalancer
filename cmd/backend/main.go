@@ -34,7 +34,7 @@ func startImgServer(connManager netmanager.ConnManager) {
 					j.Log(1) <- fmt.Sprintf("#%d job is %s, error: %s",
 						counter + 1, strings.ToLower(j.GetState().String()), err)
 					counter++
-					j.Log(1) <- fmt.Sprintf("N gouroutines %d", runtime.NumGoroutine())
+					j.Log(2) <- fmt.Sprintf("N gouroutines %d", runtime.NumGoroutine())
  					return
 				}
 			}

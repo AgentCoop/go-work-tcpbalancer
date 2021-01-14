@@ -1,12 +1,19 @@
 # go-work-tcpbalancer
 An example of a TCP load balancer using Go concurrency pattern [Job](https://github.com/AgentCoop/go-work).
+<img align="center" style="margin: 6px" src="https://raw.githubusercontent.com/AgentCoop/go-work-tcpbalancer/master/assets/balancer-schema.png" alt='Balancer Schema' aria-label='' />
 
 ## Demo
 ```bash
 $ docker-compose up --build
 ```
-Once the client completes its work, you will see resized images of gophers in the ./samples directory. 
+When started the client will download few images of Go gophers and send them to the proxy server for resizing.
+Once the client completes its work, you will see the resized images of gophers in the _./samples_ directory. 
 
+## Details on implementation
+The central part of the balancer implementation is Job component, so let's see how it's being used in the main components. 
+  1. [Client](./docs/client.md)
+  2. [Proxy Server](./docs/proxy.md)
+  3. [Backend Server](./docs/backend.md)
 ## Components
 ### 🚹 Client
 The client application scans specified directory for images and sends them to the proxy server for resizing. 

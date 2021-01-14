@@ -101,6 +101,6 @@ func main() {
 	resizeImages(connMngr)
 	finishedAt = time.Now().UnixNano()
 
-	time.Sleep(time.Second * 6)
+	//time.Sleep(time.Second * 6)
 	showNetStatistics(connMngr)
 }
