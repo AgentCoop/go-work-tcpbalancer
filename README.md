@@ -10,11 +10,12 @@ When started the client will download few images of Go gophers and send them to 
 Once the client completes its work, you will see the resized images of gophers in the _./samples_ directory. 
 
 ## Details on implementation
-The central part of the balancer implementation is Job component, so let's see how it's being used in the main components. 
+The central part of the balancer implementation is [Job component](https://github.com/AgentCoop/go-work), so let's see
+how it's being used in the applications.
   1. [Client](./docs/client.md)
   2. [Proxy Server](./docs/proxy.md)
   3. [Backend Server](./docs/backend.md)
-## Components
+## Applications
 ### 🚹 Client
 The client application scans specified directory for images and sends them to the proxy server for resizing. 
 List of the options:
@@ -25,10 +26,10 @@ List of the options:
   * _--input_ - input directory to scan
   * _--output_ - output directory for the resized images
   * _-w, -h_ - target image width and height
-  * _--times - run scanning N times
+  * _--times_ - run scanning N times
   * _--dry-run_ - dispatches request without image resizing
   * _--debug_ - enables Go profiling
-### 💻 Backend server
+### 💻 Backend Server
 Handles requests for image resizing.
 List of the options:
   * _--port, -p_ - port number to listen to
@@ -36,7 +37,7 @@ List of the options:
   * _--debug_ - enables Go profiling
   * _--loglevel_ - 0 or 1
 
-### 🌎 Proxy server
+### 🌎 Proxy Server
 Balances incoming requests across a group of backend servers.
 List of the options:
   * _--port, -p_ - port number to listen to

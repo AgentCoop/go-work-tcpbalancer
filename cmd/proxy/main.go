@@ -31,7 +31,7 @@ func runLoadBalancer(connMngr netmanager.ConnManager) {
 		go func() {
 			for {
 				select {
-				case <- balancerJob.GetDoneChan():
+				case <- balancerJob.JobDoneNotify():
 					_, err := balancerJob.GetInterruptedBy()
 					balancerJob.Log(2) <- fmt.Sprintf("job is %s, error '%v'",  balancerJob.GetState(), err)
 					return

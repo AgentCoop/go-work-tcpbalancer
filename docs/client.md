@@ -30,7 +30,7 @@ func (mngr *connManager) ConnectTask(j job.Job) (job.Init, job.Run, job.Finalize
 		mngr.addConn(stream)
 
 		// Notify other tasks that connection was successfully established
-		stream.newConnChan <- job.DoneSig
+		stream.newConnChan <- job.NotifySig
 		// Finish task execution and kick off execution of other tasks.
 		task.Done()
 	}
@@ -119,3 +119,7 @@ func WriteTask(j job.Job) (job.Init, job.Run, job.Finalize) {
 	return nil, run, fin
 }
 ```
+Finally, the other two tasks ([imgResizer.ScanForImagesTask](https://github.com/AgentCoop/go-work-tcpbalancer/blob/main/internal/task/frontend/imgresize.go#L87)
+and [mgResizer.SaveResizedImageTask](https://github.com/AgentCoop/go-work-tcpbalancer/blob/main/internal/task/frontend/imgresize.go#L38))
+do the rest of things: the former dispatches an image to the proxy server, and the latter saves the resized image. They
+both share data and orcherstrate execution with each other.

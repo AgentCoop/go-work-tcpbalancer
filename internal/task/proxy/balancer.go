@@ -106,7 +106,7 @@ func (b Balancer) LoadBalance(j job.Job) (job.Init, job.Run, job.Finalize) {
 			<-pjob.RunInBackground()
 
 			select {
-			case <- pjob.GetDoneChan():
+			case <- pjob.JobDoneNotify():
 				_, err := pjob.GetInterruptedBy()
 				pjob.Log(2) <- fmt.Sprintf("proxy conn job is %s, error %s", pjob.GetState(), err)
 				j.Finish()

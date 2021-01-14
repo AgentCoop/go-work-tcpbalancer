@@ -1,9 +1,9 @@
-github.com/AgentCoop/go-work v0.0.0-20210113091906-dd1b38a7c879 h1:FwLA9rKWXax5ycZBek3FSnJDcP+0let9qKzJNAnOdrk=
-github.com/AgentCoop/go-work v0.0.0-20210113091906-dd1b38a7c879/go.mod h1:isypi+prFXy84/Uo5B6CqtLJ0LBkAr1/85aPjPC+J7U=
+github.com/AgentCoop/go-work v0.0.1 h1:l5F760W56HB1JOBTgP9EtSiG7uJzQgxTtD0fTPNJTOg=
+github.com/AgentCoop/go-work v0.0.1/go.mod h1:isypi+prFXy84/Uo5B6CqtLJ0LBkAr1/85aPjPC+J7U=
 github.com/AgentCoop/net-dataframe v0.0.1 h1:XwdiIBu9IEeXngjIvYPZC/yt3GPL5ivdC6PiLjeWeYs=
 github.com/AgentCoop/net-dataframe v0.0.1/go.mod h1:bzlDDIsHJkwZQ8uJYYyDdN9np6qOOekjney/9uhXNT8=
-github.com/AgentCoop/net-manager v0.0.0-20210113120923-273e131f439b h1:B19/X+B4BaPBV32FfQP6/yPHcUTROZfERXwmMKn+Wpw=
-github.com/AgentCoop/net-manager v0.0.0-20210113120923-273e131f439b/go.mod h1:rJ1C8SyglUB4s1HBwAa3FczL7DHkEUxJPa6vwF0cGpw=
+github.com/AgentCoop/net-manager v0.0.0-20210114144114-c04e8b885085 h1:g0wMJyCRAGXsG+IhDSWyEMYnPaj5Q3A9YgMy0XnywJs=
+github.com/AgentCoop/net-manager v0.0.0-20210114144114-c04e8b885085/go.mod h1:OvdatEWL36Ly1vViBsGUUtRqUvTgKcx8YoANlF5qpEg=
 github.com/google/go-cmp v0.5.4 h1:L8R9j+yAqZuZjsqh/z+F1NCffTKKLShY6zXTItVIZ8M=
 github.com/google/go-cmp v0.5.4/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/jessevdk/go-flags v1.4.0 h1:4IU2WS7AumrZ/40jfhf4QVDMsQwqA7VEHozFRrGARJA=

@@ -29,7 +29,7 @@ func startImgServer(connManager netmanager.ConnManager) {
 			j := mainJob
 			for {
 				select {
-				case <-j.GetDoneChan():
+				case <-j.JobDoneNotify():
 					_, err := mainJob.GetInterruptedBy()
 					j.Log(1) <- fmt.Sprintf("#%d job is %s, error: %s",
 						counter + 1, strings.ToLower(j.GetState().String()), err)
