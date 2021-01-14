@@ -68,7 +68,7 @@ func (s *ImageResizer) SaveResizedImageTask(j job.Job) (job.Init, job.Run, job.F
 			}
 
 			j.Log(1) <- fmt.Sprintf("file %s has been saved", filename)
-			stream.RecvDataFrameSync() // Tell netmanager.Read that we are done processing the frame
+			stream.RecvDataFrameSync() // Tell netmanager.ReadTask that we are done processing the frame
 			s.recvx++
 			task.Tick()
 		default:

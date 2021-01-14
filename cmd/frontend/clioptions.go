@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-var CliOptions struct {
+var cliOptions struct {
 	ProxyHost string `long:"proxy" required:"true"`
 	LogLevel int `long:"loglevel"`
 	MaxConns int `long:"maxconns"`
@@ -25,11 +25,11 @@ func newParser(data interface{}) *flags.Parser {
 }
 
 func ParseCliOptions() {
-	parser := newParser(&CliOptions)
+	parser := newParser(&cliOptions)
 	_, err := parser.ParseArgs(os.Args)
 	if err != nil { panic(err) }
 
-	if CliOptions.MaxConns == 0 { CliOptions.MaxConns = 1 }
-	if CliOptions.MinConns == 0 { CliOptions.MinConns = 1 }
-	if CliOptions.Times == 0 { CliOptions.Times = 1 }
+	if cliOptions.MaxConns == 0 { cliOptions.MaxConns = 1 }
+	if cliOptions.MinConns == 0 { cliOptions.MinConns = 1 }
+	if cliOptions.Times == 0 { cliOptions.Times = 1 }
 }

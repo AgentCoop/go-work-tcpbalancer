@@ -6,7 +6,7 @@ import (
 )
 
 func initLogger() {
-	job.DefaultLogLevel = CliOptions.LogLevel
+	job.DefaultLogLevel = cliOptions.LogLevel
 	job.RegisterDefaultLogger(func() job.LogLevelMap {
 		m := make(job.LogLevelMap, 3)
 		handler := func(record interface{}, level int) {

@@ -9,7 +9,7 @@ const (
 )
 
 func (t ImgType) ToFileExt() string {
-	return [...]string{".jpeg", ".png", ".giff"}[t]
+	return [...]string{".jpeg", ".png", ".gif"}[t]
 }
 
 type ImgInfo struct {
